@@ -1,0 +1,294 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		000000000000000000000201 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000101 /* ContentView.swift */; };
+		000000000000000000000202 /* OctoPolyIPadApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000102 /* OctoPolyIPadApp.swift */; };
+		000000000000000000000203 /* MeshViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000103 /* MeshViewModel.swift */; };
+		000000000000000000000204 /* MetalViewport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000104 /* MetalViewport.swift */; };
+		000000000000000000000205 /* MeshRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000105 /* MeshRenderer.swift */; };
+		000000000000000000000206 /* Shaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000106 /* Shaders.metal */; };
+		000000000000000000000207 /* MeshBridge.mm in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000108 /* MeshBridge.mm */; };
+		000000000000000000000208 /* mesh.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000010A /* mesh.cpp */; };
+		000000000000000000000209 /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 00000000000000000000010C /* Metal.framework */; };
+		00000000000000000000020A /* MetalKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 00000000000000000000010D /* MetalKit.framework */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		000000000000000000000008 /* OctoPolyIPad.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = OctoPolyIPad.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		000000000000000000000101 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		000000000000000000000102 /* OctoPolyIPadApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OctoPolyIPadApp.swift; sourceTree = "<group>"; };
+		000000000000000000000103 /* MeshViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeshViewModel.swift; sourceTree = "<group>"; };
+		000000000000000000000104 /* MetalViewport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetalViewport.swift; sourceTree = "<group>"; };
+		000000000000000000000105 /* MeshRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeshRenderer.swift; sourceTree = "<group>"; };
+		000000000000000000000106 /* Shaders.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = Shaders.metal; sourceTree = "<group>"; };
+		000000000000000000000107 /* MeshBridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MeshBridge.h; sourceTree = "<group>"; };
+		000000000000000000000108 /* MeshBridge.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = MeshBridge.mm; sourceTree = "<group>"; };
+		000000000000000000000109 /* OctoPolyIPad-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "OctoPolyIPad-Bridging-Header.h"; sourceTree = "<group>"; };
+		00000000000000000000010A /* mesh.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = src/mesh.cpp; sourceTree = "<group>"; };
+		00000000000000000000010B /* mesh.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = include/octopoly/mesh.hpp; sourceTree = "<group>"; };
+		00000000000000000000010C /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
+		00000000000000000000010D /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		000000000000000000000010 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				000000000000000000000209 /* Metal.framework in Frameworks */,
+				00000000000000000000020A /* MetalKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		000000000000000000000002 = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000004 /* Sources */,
+				000000000000000000000005 /* Portable Core */,
+				000000000000000000000006 /* Frameworks */,
+				000000000000000000000003 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		000000000000000000000003 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000008 /* OctoPolyIPad.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		000000000000000000000004 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000102 /* OctoPolyIPadApp.swift */,
+				000000000000000000000101 /* ContentView.swift */,
+				000000000000000000000103 /* MeshViewModel.swift */,
+				000000000000000000000104 /* MetalViewport.swift */,
+				000000000000000000000105 /* MeshRenderer.swift */,
+				000000000000000000000106 /* Shaders.metal */,
+				000000000000000000000107 /* MeshBridge.h */,
+				000000000000000000000108 /* MeshBridge.mm */,
+				000000000000000000000109 /* OctoPolyIPad-Bridging-Header.h */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		000000000000000000000005 /* Portable Core */ = {
+			isa = PBXGroup;
+			children = (
+				00000000000000000000010A /* mesh.cpp */,
+				00000000000000000000010B /* mesh.hpp */,
+			);
+			name = "Portable Core";
+			path = ../../core;
+			sourceTree = "<group>";
+		};
+		000000000000000000000006 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				00000000000000000000010C /* Metal.framework */,
+				00000000000000000000010D /* MetalKit.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		000000000000000000000007 /* OctoPolyIPad */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 00000000000000000000000A /* Build configuration list for PBXNativeTarget "OctoPolyIPad" */;
+			buildPhases = (
+				00000000000000000000000F /* Sources */,
+				000000000000000000000010 /* Frameworks */,
+				000000000000000000000011 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = OctoPolyIPad;
+			productName = OctoPolyIPad;
+			productReference = 000000000000000000000008 /* OctoPolyIPad.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		000000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					000000000000000000000007 = {
+						CreatedOnToolsVersion = 16.0;
+					};
+				};
+			};
+			buildConfigurationList = 000000000000000000000009 /* Build configuration list for PBXProject "OctoPolyIPad" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 000000000000000000000002;
+			productRefGroup = 000000000000000000000003 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				000000000000000000000007 /* OctoPolyIPad */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		000000000000000000000011 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		00000000000000000000000F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				000000000000000000000202 /* OctoPolyIPadApp.swift in Sources */,
+				000000000000000000000201 /* ContentView.swift in Sources */,
+				000000000000000000000203 /* MeshViewModel.swift in Sources */,
+				000000000000000000000204 /* MetalViewport.swift in Sources */,
+				000000000000000000000205 /* MeshRenderer.swift in Sources */,
+				000000000000000000000206 /* Shaders.metal in Sources */,
+				000000000000000000000207 /* MeshBridge.mm in Sources */,
+				000000000000000000000208 /* mesh.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		00000000000000000000000B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_CXX_LANGUAGE_STANDARD = "c++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		00000000000000000000000C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_CXX_LANGUAGE_STANDARD = "c++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		00000000000000000000000D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_CXX_LANGUAGE_STANDARD = "c++20";
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				HEADER_SEARCH_PATHS = "$(PROJECT_DIR)/../../core/include";
+				INFOPLIST_KEY_CFBundleDisplayName = OctoPoly;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.octopus7.OctoPolyIPad;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_OBJC_BRIDGING_HEADER = "Sources/OctoPolyIPad-Bridging-Header.h";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 2;
+			};
+			name = Debug;
+		};
+		00000000000000000000000E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_CXX_LANGUAGE_STANDARD = "c++20";
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				HEADER_SEARCH_PATHS = "$(PROJECT_DIR)/../../core/include";
+				INFOPLIST_KEY_CFBundleDisplayName = OctoPoly;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.octopus7.OctoPolyIPad;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_OBJC_BRIDGING_HEADER = "Sources/OctoPolyIPad-Bridging-Header.h";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 2;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		000000000000000000000009 /* Build configuration list for PBXProject "OctoPolyIPad" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				00000000000000000000000B /* Debug */,
+				00000000000000000000000C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		00000000000000000000000A /* Build configuration list for PBXNativeTarget "OctoPolyIPad" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				00000000000000000000000D /* Debug */,
+				00000000000000000000000E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 000000000000000000000001 /* Project object */;
+}

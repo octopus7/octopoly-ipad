@@ -1,0 +1,23 @@
+# C++ / CMake
+/build/
+/cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+CTestTestfile.cmake
+
+# Xcode
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.xccheckout
+*.xcscmblueprint
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Apple / editors
+.DS_Store
+*.swp
+*~

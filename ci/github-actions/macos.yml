@@ -1,0 +1,21 @@
+name: macOS simulator
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  xcodebuild:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build unsigned iPad simulator app
+        run: >-
+          xcodebuild
+          -project app/OctoPolyIPad/OctoPolyIPad.xcodeproj
+          -scheme OctoPolyIPad
+          -configuration Debug
+          -destination 'generic/platform=iOS Simulator'
+          CODE_SIGNING_ALLOWED=NO
+          CODE_SIGNING_REQUIRED=NO
+          build
