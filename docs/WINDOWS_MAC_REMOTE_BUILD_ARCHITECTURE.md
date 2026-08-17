@@ -47,7 +47,7 @@ Epic은 UE가 Windows에서 Metal 셰이더를 컴파일할 수 있으며, UE 5.
 - `xcode`: `.metal` 소스를 Xcode Sources에 두고 Mac에서 컴파일한다. 현재 저장소의 Phase 1 구조다.
 - `windows-precompiled`: Windows가 `default.metallib`을 만들고 Xcode는 이를 Resource로만 복사한다. Mac 빌드 로그에 `CompileMetalFile` 또는 `MetalLink`가 나타나면 실패한다.
 
-최종 목표 프로필은 `windows-precompiled`이다. 다만 Apple의 Windows Metal 도구 CLI 인자와 iOS/iPadOS 타깃 조합은 설치된 실제 5.3 도구의 `--help` 출력 및 최소 셰이더 프로브로 먼저 동결한다. UE 통합이 검증됐다는 이유만으로 네이티브 CLI 플래그를 추정하지 않는다.
+최종 목표 프로필은 `windows-precompiled`이다. 다만 Apple의 Windows Metal 도구 version, CLI 인자와 iOS/iPadOS 타깃 조합은 실제 설치 도구의 `--help` 출력, Xcode SDK 호환성 및 최소 셰이더 프로브로 별도 동결한다. UE 5.7용 5.3 도구가 존재한다는 이유만으로 Native 호환성이나 CLI 플래그를 추정하지 않는다.
 
 ### 2.3 Apple 서명 경계
 
@@ -55,7 +55,7 @@ Epic은 UE가 Windows에서 Metal 셰이더를 컴파일할 수 있으며, UE 5.
 - Native signing 자산을 Windows로 복사하지 않는다.
 - UE 5.7 signed build에는 이 규칙을 아직 적용 완료로 표시하지 않는다. Epic의 공식 provisioning 절차는 Windows의 Project Settings에서 서로 일치하는 Provisioning Profile과 Signing Certificate를 선택하는 경로를 Remote Build에도 적용한다고 설명한다.[9]
 - SSH 키는 Windows OpenSSH agent/config가 소유하고 저장소나 작업 매니페스트에 넣지 않는다.
-- 유료 Apple Developer Program 없이 Personal Team으로 물리 기기에 설치하는 **검증된 범위는 Native 앱**이며, [무료 Personal Team 무선 설치 절차](FREE_PERSONAL_TEAM_WIRELESS_INSTALL.md)를 따른다.
+- 유료 Apple Developer Program 없이 Personal Team으로 물리 기기에 설치하도록 **문서화한 범위는 Native 앱**이며, [무료 Personal Team 무선 설치 절차](FREE_PERSONAL_TEAM_WIRELESS_INSTALL.md)를 따른다. 실제 Mac/iPad 수용 시험은 구현 차수 C의 완료 gate다.
 
 ### 2.4 UE 5.7 Signing Decision Gate
 
@@ -143,14 +143,16 @@ Mac에는 서로 섞지 않는 두 신뢰 경계가 있다.
 프로필을 읽어 다음 불변식을 작업 시작 전에 결정한다.
 
 - `engine`: `native` 또는 `ue5.7`
+- `mode`: `build`, `signing-probe`
 - `platform`: `ios` 또는 `ipados`
 - `target`: `simulator`, `device`, `archive`
 - `signing`: `none`, `personal-team`, `development`, `distribution`
+- `signingContract`: `not-required`, `native-mac`, `unverified-disabled`, 또는 프로브로 동결된 contract ID
 - `shaderOwner`: `windows` 또는 `mac`
 - `cookOwner`: UE에서는 반드시 `windows`
 - `install`: `none`, `paired-device`
 
-UE 작업에서 `cookOwner != windows` 또는 `shaderOwner != windows`이면 매니페스트 검증 단계에서 거부한다.
+UE 작업에서 `cookOwner != windows` 또는 `shaderOwner != windows`이면 매니페스트 검증 단계에서 거부한다. `signingContract == unverified-disabled`인 작업은 `mode == signing-probe`와 `install == none`만 허용하며, 일반 build·device install·archive export를 요청할 수 없다.
 
 ### 5.2 Native Adapter
 
@@ -186,21 +188,25 @@ UE 작업에서 `cookOwner != windows` 또는 `shaderOwner != windows`이면 매
   "profiles": {
     "native-ipad-device": {
       "engine": "native",
+      "mode": "build",
       "platform": "ipados",
       "target": "device",
       "configuration": "Debug",
       "shaderOwner": "windows",
       "signing": "personal-team",
+      "signingContract": "native-mac",
       "install": "paired-device"
     },
     "ue57-ios-signing-probe": {
       "engine": "ue5.7",
+      "mode": "signing-probe",
       "platform": "ios",
       "target": "device",
       "configuration": "Development",
       "cookOwner": "windows",
       "shaderOwner": "windows",
-      "signing": "unverified-disabled",
+      "signing": "development",
+      "signingContract": "unverified-disabled",
       "install": "none"
     }
   }
@@ -344,7 +350,7 @@ octobuild doctor --profile ue57-ios-signing-probe
 octobuild build --profile native-ipad-device
 
 # UE BuildCookRun host/signing audit; install remains disabled until §2.4 passes
-octobuild build --profile ue57-ios-signing-probe
+octobuild probe-signing --profile ue57-ios-signing-probe
 
 # 이미 성공한 작업 설치
 octobuild install --job <job-id> --device <device-id>
@@ -553,7 +559,7 @@ Windows는 iPhone/iPad에 직접 설치하지 않는다. Mac이 기기와 페어
 
 ### 차수 C — Native Windows Metal + device
 
-- Metal 5.3 CLI probe와 최소 golden shader
+- Native Metal 도구 version/CLI probe와 최소 golden shader
 - `default.metallib` build/manifest
 - Xcode project resource 전환
 - Mac Metal compile 금지 gate

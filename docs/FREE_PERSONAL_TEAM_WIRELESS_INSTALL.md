@@ -26,7 +26,7 @@ Windows PC ──SSH──> Mac + Xcode ──페어링된 LAN/Wi-Fi──> iPho
 
 Windows가 기기에 직접 설치하는 것이 아니다. 이 문서의 Native 절차에서는 Apple 서명과 기기 통신을 Mac/Xcode가 담당한다.
 
-이 문서의 반복 가능한 signed build/install 명령은 **Native OctoPoly**에 대한 절차다. UE 5.7 Personal Team 서명은 Epic Remote Build의 signing 자산 계약이 실제 프로브로 동결되기 전에는 지원 완료로 간주하지 않는다.
+이 문서가 제시하는 signed build/install 명령은 **Native OctoPoly**에 대한 절차다. 실제 Mac/iPad 실행은 아직 이 저장소에서 수행되지 않았으며 implementation acceptance gate로 남는다. UE 5.7 Personal Team 서명은 Epic Remote Build의 signing 자산 계약이 실제 프로브로 동결되기 전에는 지원 완료로 간주하지 않는다.
 
 ## 2. 가능한 것과 불가능한 것
 
@@ -211,9 +211,11 @@ Mac host key가 바뀌면 자동 승인하지 말고 실제 Mac의 fingerprint�
 - `<MAC_REPO>`: Mac의 저장소 절대 경로
 - `<XCODE_DESTINATION_ID>`: 아래 `xcodebuild -showdestinations`에서 확인한 물리 기기 destination ID
 - `<DEVICE_ID>`: `devicectl list devices`에서 확인한 설치 대상 식별자
-- `<DEVICE_UDID>`: embedded provisioning profile의 `ProvisionedDevices`와 대조할 Apple 기기 UDID
+- `<DEVICE_UDID>`: Xcode의 기기 상세에서 확인하고 embedded provisioning profile의 `ProvisionedDevices`와 대조할 Apple 기기 UDID
 - `<TEAM_ID>`: Xcode Personal Team의 development team 식별자
 - `<BUNDLE_ID>`: 개인 계정에서 고유한 Bundle Identifier
+
+`<XCODE_DESTINATION_ID>`, `<DEVICE_ID>`, `<DEVICE_UDID>`는 도구별 식별자 계약이므로 값이 같다고 가정하지 않고 각각 발견·검증한다.
 
 빌드 destination을 먼저 발견한다.
 

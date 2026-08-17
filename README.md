@@ -44,7 +44,7 @@ The script contains no credentials and relies on your SSH agent/configuration.
 ## Build infrastructure design
 
 - [Windows → Mac remote Apple build architecture](docs/WINDOWS_MAC_REMOTE_BUILD_ARCHITECTURE.md) — proposed controller for the native Metal app and Unreal Engine 5.7 iOS/iPadOS builds. UE Cook and Metal shader compilation are Windows-only; UE signed profiles stay disabled until the documented signing-contract probe passes.
-- [Free Personal Team wireless device installation](docs/FREE_PERSONAL_TEAM_WIRELESS_INSTALL.md) — verified Native path for initial cable pairing followed by Windows-over-SSH and Mac-over-network installation without paid Apple Developer Program enrollment; UE Personal Team signing remains gated by a project-specific probe.
+- [Free Personal Team wireless device installation](docs/FREE_PERSONAL_TEAM_WIRELESS_INSTALL.md) — documented Native path for initial cable pairing followed by Windows-over-SSH and Mac-over-network installation without paid Apple Developer Program enrollment; UE Personal Team signing remains gated by a project-specific probe.
 
 These documents are implementation designs. The current Phase 1 helpers do not yet implement the full orchestrator.
 
