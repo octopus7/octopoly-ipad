@@ -1,6 +1,7 @@
 # 유료 Apple Developer Program 없이 무선 기기 설치
 
 - 대상: 개인 소유 iPhone/iPad에서 개발 빌드 테스트
+- 현재 `OctoPolyIPad` target: `TARGETED_DEVICE_FAMILY=2`인 iPad 전용; iPhone 표기는 도구의 일반 절차를 설명할 때만 사용
 - Apple 공식 정책·절차 확인일: 2026-08-18
 - 기준: Apple Account + Xcode Personal Team
 - 배포 형태: App Store/TestFlight/Ad Hoc이 아닌 **개인용 on-device development testing**

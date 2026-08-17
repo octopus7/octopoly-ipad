@@ -605,7 +605,7 @@ Windows는 iPhone/iPad에 직접 설치하지 않는다. Mac이 기기와 페어
 - [ ] strict 프로필은 Windows에서 `default.metallib`을 생성한다.
 - [ ] strict 프로필의 Mac 로그에 Metal compile/link 단계가 없다.
 - [ ] Xcode가 signed device `.app`을 생성한다.
-- [ ] 실제 iPad/iPhone에서 install과 launch를 확인한다.
+- [ ] 현재 OctoPoly target은 실제 iPad에서 install과 launch를 확인한다. iPhone은 별도 target/profile 수용 시험으로 다룬다.
 
 ### UE 5.7
 
