@@ -205,7 +205,16 @@ Mac host key가 바뀌면 자동 승인하지 말고 실제 Mac의 fingerprint�
 
 ## 10. Native OctoPoly 무선 빌드·설치
 
-### 10.1 Mac에서 signed device build
+### 10.1 Windows shader 전환 후 Mac signed device build
+
+> **현재 Phase 1 checkout에서는 이 절차를 실행하지 않는다.** 현재 Xcode project는 `Shaders.metal`을 Sources에서 Mac 컴파일하므로 “모든 Metal shader compile은 Windows”라는 필수 경계를 위반한다. 아래 build/install은 다음 조건을 모두 만족한 Windows 생성 source bundle에만 허용한다.
+
+- Windows가 `default.metallib`과 `shader-manifest.json`을 생성하고 두 파일의 hash·compiler version·target profile을 receipt에 기록함
+- source bundle의 PBX Sources에 `Shaders.metal`이 없고 PBX Resources에 `default.metallib`이 포함됨
+- Controller가 Mac 업로드 전 manifest와 `default.metallib` hash를 검증함
+- Mac preflight와 build 후 감사에서 `CompileMetalFile`, `MetalLink`, `metal`, `metallib` 실행이 하나라도 확인되면 실패함
+
+이 전환과 검증기는 [원격 빌드 설계](WINDOWS_MAC_REMOTE_BUILD_ARCHITECTURE.md)의 구현 차수 B 산출물이다. 구현되기 전에는 현재 helper나 아래 `xcodebuild`를 Personal Team 설치 우회 경로로 사용하지 않는다.
 
 아래 placeholder를 실제 값으로 대체한다.
 
@@ -228,7 +237,7 @@ xcodebuild \
   -showdestinations
 ```
 
-Mac Terminal 또는 Windows에서 SSH로 다음 `xcodebuild`를 실행한다.
+위 Windows shader 계약을 통과한 source bundle의 Mac 작업 디렉터리에서만 다음 `xcodebuild`를 실행한다.
 
 ```bash
 cd <MAC_REPO>
@@ -383,7 +392,7 @@ xcrun devicectl device process launch \
 
 ```powershell
 ssh octopoly-build-mac `
-  'cd <MAC_REPO> && OCTOPOLY_DEVICE_ID=<DEVICE_ID> OCTOPOLY_APP_PATH="$HOME/Library/Developer/Xcode/DerivedData/OctoPolyRemote/Build/Products/Debug-iphoneos/OctoPolyIPad.app" ./scripts/mac/install-device.sh'
+  'cd "<MAC_REPO>" && OCTOPOLY_DEVICE_ID="<DEVICE_ID>" OCTOPOLY_APP_PATH="$HOME/Library/Developer/Xcode/DerivedData/OctoPolyRemote/Build/Products/Debug-iphoneos/OctoPolyIPad.app" ./scripts/mac/install-device.sh'
 ```
 
 Team ID, device ID, bundle ID는 암호는 아니지만 로그와 공개 저장소에 불필요하게 고정하지 않는다. Apple Account 비밀번호나 2FA 코드는 절대 SSH 명령에 넣지 않는다.

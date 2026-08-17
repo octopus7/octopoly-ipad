@@ -42,12 +42,9 @@ Epic은 UE가 Windows에서 Metal 셰이더를 컴파일할 수 있으며, UE 5.
 
 ### 2.2 네이티브 Metal의 셰이더 정책
 
-네이티브 앱은 두 정책을 지원하되 프로젝트별로 하나를 고정한다.
+지원 프로필은 `windows-precompiled` 하나뿐이다. Windows가 `default.metallib`을 만들고 Xcode는 이를 Resource로만 복사한다. Mac build log나 strict exec trace에 `CompileMetalFile`, `MetalLink`, `metal`, `metallib`이 나타나면 작업을 실패시킨다.
 
-- `xcode`: `.metal` 소스를 Xcode Sources에 두고 Mac에서 컴파일한다. 현재 저장소의 Phase 1 구조다.
-- `windows-precompiled`: Windows가 `default.metallib`을 만들고 Xcode는 이를 Resource로만 복사한다. Mac 빌드 로그에 `CompileMetalFile` 또는 `MetalLink`가 나타나면 실패한다.
-
-최종 목표 프로필은 `windows-precompiled`이다. 다만 Apple의 Windows Metal 도구 version, CLI 인자와 iOS/iPadOS 타깃 조합은 실제 설치 도구의 `--help` 출력, Xcode SDK 호환성 및 최소 셰이더 프로브로 별도 동결한다. UE 5.7용 5.3 도구가 존재한다는 이유만으로 Native 호환성이나 CLI 플래그를 추정하지 않는다.
+현재 Phase 1 저장소처럼 `.metal` 소스를 Xcode Sources에 두는 `xcode` 상태는 **legacy/non-compliant migration input**으로만 발견하며, build·sign·install 프로필에서 선택할 수 없다. Windows precompile 도구의 version/CLI/SDK 호환성 또는 최소 golden shader probe가 닫히지 않으면 Native 작업을 중단하고 Mac compile로 fallback하지 않는다. UE 5.7용 5.3 도구가 존재한다는 이유만으로 Native 호환성이나 CLI 플래그를 추정하지 않는다.
 
 ### 2.3 Apple 서명 경계
 
@@ -148,11 +145,11 @@ Mac에는 서로 섞지 않는 두 신뢰 경계가 있다.
 - `target`: `simulator`, `device`, `archive`
 - `signing`: `none`, `personal-team`, `development`, `distribution`
 - `signingContract`: `not-required`, `native-mac`, `unverified-disabled`, 또는 프로브로 동결된 contract ID
-- `shaderOwner`: `windows` 또는 `mac`
+- `shaderOwner`: 모든 엔진에서 반드시 `windows`
 - `cookOwner`: UE에서는 반드시 `windows`
 - `install`: `none`, `paired-device`
 
-UE 작업에서 `cookOwner != windows` 또는 `shaderOwner != windows`이면 매니페스트 검증 단계에서 거부한다. `signingContract == unverified-disabled`인 작업은 `mode == signing-probe`와 `install == none`만 허용하며, 일반 build·device install·archive export를 요청할 수 없다.
+Native와 UE 작업 모두 `shaderOwner != windows`이면 매니페스트 검증 단계에서 거부한다. UE 작업은 `cookOwner != windows`도 거부한다. `signingContract == unverified-disabled`인 작업은 `mode == signing-probe`와 `install == none`만 허용하며, 일반 build·device install·archive export를 요청할 수 없다.
 
 ### 5.2 Native Adapter
 
@@ -531,7 +528,7 @@ Windows는 iPhone/iPad에 직접 설치하지 않는다. Mac이 기기와 페어
 | 성공 여부가 exit code 중심 | hash·서명·host-boundary 검증 | Verifier |
 | 수동 install만 제공 | paired device discovery/install/launch 영수증 | Device Adapter |
 | UE 어댑터 없음 | UAT + 별도 UBT Direct SSH 신뢰 경계 | UE Adapter/Security owner |
-| macOS CI 템플릿이 Mac에서 `.metal`을 컴파일 | strict 프로필용 선컴파일 artifact 소비 | CI owner |
+| macOS CI 템플릿이 Mac에서 `.metal`을 컴파일 | 지원 프로필용 Windows 선컴파일 artifact 소비 | CI owner |
 
 문서만 추가하는 현재 변경은 이 차이를 구현한 것으로 간주하지 않는다.
 
@@ -548,21 +545,23 @@ Windows는 iPhone/iPad에 직접 설치하지 않는다. Mac이 기기와 페어
 
 **완료 조건:** 실제 Windows→Mac SSH에서 `doctor` 영수증 회수.
 
-### 차수 B — Native unsigned simulator
+### 차수 B — Native Windows Metal + unsigned simulator
 
 - source bundle
+- Native Metal 도구 version/CLI probe와 최소 golden shader
+- Windows `default.metallib` build/manifest
+- `Shaders.metal`의 PBX Sources 제거와 `default.metallib` Resources 전환
+- Mac Metal compile 금지 gate
 - isolated DerivedData
 - unsigned simulator `xcodebuild`
 - `.app`, `.xcresult`, log 회수
 
-**완료 조건:** Mac에서 실제 simulator build 성공 및 Windows artifact hash 일치.
+**완료 조건:** Windows artifact hash가 일치하고 Mac Metal compile/link 없이 실제 simulator build가 성공한다.
 
-### 차수 C — Native Windows Metal + device
+### 차수 C — Native Personal Team device
 
-- Native Metal 도구 version/CLI probe와 최소 golden shader
-- `default.metallib` build/manifest
-- Xcode project resource 전환
-- Mac Metal compile 금지 gate
+- 차수 B의 Windows shader artifact와 금지 gate 재검증
+- Personal Team signing probe
 - Personal Team 무선 install/launch
 
 **완료 조건:** Mac build log에 Metal compile 단계가 없고, 실제 iPad에서 설치·launch 확인.
@@ -602,8 +601,8 @@ Windows는 iPhone/iPad에 직접 설치하지 않는다. Mac이 기기와 페어
 ### Native
 
 - [ ] portable core 검사가 Windows에서 먼저 통과한다.
-- [ ] strict 프로필은 Windows에서 `default.metallib`을 생성한다.
-- [ ] strict 프로필의 Mac 로그에 Metal compile/link 단계가 없다.
+- [ ] 모든 지원 Native 프로필은 Windows에서 `default.metallib`을 생성한다.
+- [ ] 모든 지원 Native 프로필의 Mac 로그와 exec trace에 Metal compile/link 단계가 없다.
 - [ ] Xcode가 signed device `.app`을 생성한다.
 - [ ] 현재 OctoPoly target은 실제 iPad에서 install과 launch를 확인한다. iPhone은 별도 target/profile 수용 시험으로 다룬다.
 
@@ -625,7 +624,7 @@ Windows는 iPhone/iPad에 직접 설치하지 않는다. Mac이 기기와 페어
 3. **Windows가 source of truth:** Cook, DDC, staged content, shader artifact는 Windows 영수증이 기준이다.
 4. **Native 서명은 Mac 전용, UE 서명은 gated:** UE 5.7 signed 프로필은 실제 signing 계약이 동결되기 전 비활성이다.
 5. **검증 없는 성공 금지:** package exit code만으로 완료 처리하지 않고 host boundary, signature, hash, 선택적 device launch를 확인한다.
-6. **프로필별 shader 정책:** UE 5.7은 Windows 고정, Native는 migration 기간을 명시하되 최종 strict 프로필은 Windows 고정이다.
+6. **모든 shader는 Windows 고정:** Native의 현재 Xcode shader 상태는 migration input일 뿐 지원 build 프로필이 아니며, Mac compile fallback은 없다.
 7. **UAT 순서 왜곡 금지:** 기본 UE 프로필은 Build→Cook→Stage→Package 순서를 보고하며, Cook 실패 전에 Remote Build가 이미 실행될 수 있음을 숨기지 않는다.
 
 ## Sources
