@@ -2,9 +2,31 @@
 
 #include <algorithm>
 #include <cmath>
-#include <unordered_set>
+#include <limits>
+#include <type_traits>
+#include <utility>
 
 namespace octopoly {
+
+namespace {
+
+bool hasIdCapacity(std::uint64_t nextId, std::size_t allocationCount) noexcept {
+    return nextId != 0 &&
+           allocationCount <= std::numeric_limits<std::uint64_t>::max() - nextId;
+}
+
+static_assert(std::is_nothrow_move_assignable_v<Mesh>,
+              "atomic mesh operations require non-throwing Mesh move assignment");
+static_assert(std::is_nothrow_move_constructible_v<OperationResult>,
+              "atomic mesh operations require non-throwing OperationResult moves");
+
+OperationResult commitCandidate(Mesh& live, Mesh&& candidate,
+                                OperationResult&& success) noexcept {
+    live = std::move(candidate);
+    return std::move(success);
+}
+
+}  // namespace
 
 Mesh Mesh::makeDefaultCube() {
     Mesh mesh;
@@ -22,16 +44,34 @@ Mesh Mesh::makeDefaultCube() {
     for (const auto& polygon : polygons) {
         mesh.faces_.push_back({mesh.nextFaceId_++, polygon});
     }
+    mesh.rebuildVertexLookup();
     return mesh;
+}
+
+Mesh& Mesh::operator=(const Mesh& other) {
+    if (this == &other) {
+        return *this;
+    }
+    Mesh candidate(other);
+    *this = std::move(candidate);
+    return *this;
 }
 
 const std::vector<Vertex>& Mesh::vertices() const noexcept { return vertices_; }
 const std::vector<Face>& Mesh::faces() const noexcept { return faces_; }
 
 const Vertex* Mesh::vertex(VertexId id) const noexcept {
-    const auto found = std::find_if(vertices_.begin(), vertices_.end(),
-                                    [id](const Vertex& item) { return item.id == id; });
-    return found == vertices_.end() ? nullptr : &*found;
+    if (vertexLookup_.size() != vertices_.size()) {
+        return nullptr;
+    }
+    const auto found = std::lower_bound(
+        vertexLookup_.begin(), vertexLookup_.end(), id,
+        [](const auto& entry, VertexId sought) { return entry.first < sought; });
+    if (found == vertexLookup_.end() || found->first != id || found->second >= vertices_.size()) {
+        return nullptr;
+    }
+    const Vertex& resolved = vertices_[found->second];
+    return resolved.id == id ? &resolved : nullptr;
 }
 
 const Face* Mesh::face(FaceId id) const noexcept {
@@ -40,16 +80,24 @@ const Face* Mesh::face(FaceId id) const noexcept {
     return found == faces_.end() ? nullptr : &*found;
 }
 
+VertexId Mesh::nextVertexId() const noexcept { return nextVertexId_; }
+FaceId Mesh::nextFaceId() const noexcept { return nextFaceId_; }
 std::uint64_t Mesh::revision() const noexcept { return revision_; }
 
 std::vector<Triangle> Mesh::triangulate() const {
     std::vector<Triangle> result;
-    for (const auto& polygon : faces_) {
-        for (std::size_t index = 1; index + 1 < polygon.vertices.size(); ++index) {
-            result.push_back({polygon.id, {polygon.vertices[0], polygon.vertices[index], polygon.vertices[index + 1]}});
-        }
-    }
+    visitTriangles([&result](const Triangle& triangle) { result.push_back(triangle); });
     return result;
+}
+
+void Mesh::rebuildVertexLookup() {
+    std::vector<std::pair<VertexId, std::size_t>> rebuilt;
+    rebuilt.reserve(vertices_.size());
+    for (std::size_t index = 0; index < vertices_.size(); ++index) {
+        rebuilt.emplace_back(vertices_[index].id, index);
+    }
+    std::sort(rebuilt.begin(), rebuilt.end());
+    vertexLookup_ = std::move(rebuilt);
 }
 
 OperationResult Mesh::loopCut(FaceId faceId) {
@@ -80,6 +128,14 @@ OperationResult Mesh::knifeCut(FaceId faceId, std::size_t firstEdge, double firs
         secondT <= 0.0 || secondT >= 1.0) {
         return {false, OperationError::invalidArgument, "knife edge parameters must be inside (0, 1)", {}, {}};
     }
+    if (revision_ == std::numeric_limits<std::uint64_t>::max()) {
+        return {false, OperationError::revisionExhausted,
+                "knife cut cannot advance the terminal mesh revision", {}, {}};
+    }
+    if (!hasIdCapacity(nextVertexId_, 2) || !hasIdCapacity(nextFaceId_, 1)) {
+        return {false, OperationError::idExhausted,
+                "knife cut cannot allocate stable IDs without exhausting the ID space", {}, {}};
+    }
     if (firstEdge > secondEdge) {
         std::swap(firstEdge, secondEdge);
         std::swap(firstT, secondT);
@@ -94,17 +150,19 @@ OperationResult Mesh::knifeCut(FaceId faceId, std::size_t firstEdge, double firs
         }
     }
     const auto original = target->vertices;
-    const auto addEdgePoint = [&candidate, &original](std::size_t edge, double t) {
-        const Vec3 a = candidate.vertex(original[edge])->position;
-        const Vec3 b = candidate.vertex(original[(edge + 1) % original.size()])->position;
+    const Vec3 firstA = candidate.vertex(original[firstEdge])->position;
+    const Vec3 firstB = candidate.vertex(original[(firstEdge + 1) % original.size()])->position;
+    const Vec3 secondA = candidate.vertex(original[secondEdge])->position;
+    const Vec3 secondB = candidate.vertex(original[(secondEdge + 1) % original.size()])->position;
+    const auto addEdgePoint = [&candidate](Vec3 a, Vec3 b, double t) {
         const VertexId id = candidate.nextVertexId_++;
         candidate.vertices_.push_back({id, {a.x + (b.x - a.x) * t,
                                             a.y + (b.y - a.y) * t,
                                             a.z + (b.z - a.z) * t}});
         return id;
     };
-    const VertexId first = addEdgePoint(firstEdge, firstT);
-    const VertexId second = addEdgePoint(secondEdge, secondT);
+    const VertexId first = addEdgePoint(firstA, firstB, firstT);
+    const VertexId second = addEdgePoint(secondA, secondB, secondT);
 
     std::vector<FaceId> affected{faceId};
     const auto insertSharedEdgePoint = [&candidate, faceId, &affected](VertexId edgeStart,
@@ -159,13 +217,15 @@ OperationResult Mesh::knifeCut(FaceId faceId, std::size_t firstEdge, double firs
     affected.push_back(addedFace);
     std::sort(affected.begin(), affected.end());
     affected.erase(std::unique(affected.begin(), affected.end()), affected.end());
+    candidate.rebuildVertexLookup();
     const ValidationResult validation = candidate.validate();
     if (!validation.ok) {
         return {false, OperationError::topologyInvalid, validation.error, {}, {}};
     }
     ++candidate.revision_;
-    *this = std::move(candidate);
-    return {true, OperationError::none, {}, {first, second}, affected};
+    OperationResult success{true, OperationError::none, {}, {first, second},
+                            std::move(affected)};
+    return commitCandidate(*this, std::move(candidate), std::move(success));
 }
 
 OperationResult Mesh::insetFace(FaceId faceId, double factor) {
@@ -176,12 +236,25 @@ OperationResult Mesh::insetFace(FaceId faceId, double factor) {
     if (!std::isfinite(factor) || factor <= 0.0 || factor >= 1.0) {
         return {false, OperationError::invalidArgument, "inset factor must be inside (0, 1)", {}, {}};
     }
+    if (revision_ == std::numeric_limits<std::uint64_t>::max()) {
+        return {false, OperationError::revisionExhausted,
+                "inset cannot advance the terminal mesh revision", {}, {}};
+    }
+    const std::size_t allocationCount = source->vertices.size();
+    if (!hasIdCapacity(nextVertexId_, allocationCount) ||
+        !hasIdCapacity(nextFaceId_, allocationCount)) {
+        return {false, OperationError::idExhausted,
+                "inset cannot allocate stable IDs without exhausting the ID space", {}, {}};
+    }
 
     Mesh candidate = *this;
     const auto original = source->vertices;
     Vec3 centroid{};
+    std::vector<Vec3> originalPositions;
+    originalPositions.reserve(original.size());
     for (const VertexId id : original) {
         const Vec3 position = candidate.vertex(id)->position;
+        originalPositions.push_back(position);
         centroid.x += position.x;
         centroid.y += position.y;
         centroid.z += position.z;
@@ -193,8 +266,7 @@ OperationResult Mesh::insetFace(FaceId faceId, double factor) {
 
     std::vector<VertexId> inner;
     inner.reserve(original.size());
-    for (const VertexId id : original) {
-        const Vec3 position = candidate.vertex(id)->position;
+    for (const Vec3 position : originalPositions) {
         const VertexId added = candidate.nextVertexId_++;
         candidate.vertices_.push_back({added, {position.x + (centroid.x - position.x) * factor,
                                                position.y + (centroid.y - position.y) * factor,
@@ -215,13 +287,15 @@ OperationResult Mesh::insetFace(FaceId faceId, double factor) {
         candidate.faces_.push_back({side, {original[index], original[next], inner[next], inner[index]}});
         affected.push_back(side);
     }
+    candidate.rebuildVertexLookup();
     const ValidationResult validation = candidate.validate();
     if (!validation.ok) {
         return {false, OperationError::topologyInvalid, validation.error, {}, {}};
     }
     ++candidate.revision_;
-    *this = std::move(candidate);
-    return {true, OperationError::none, {}, inner, affected};
+    OperationResult success{true, OperationError::none, {}, std::move(inner),
+                            std::move(affected)};
+    return commitCandidate(*this, std::move(candidate), std::move(success));
 }
 
 OperationResult Mesh::extrudeFace(FaceId faceId, Vec3 offset) {
@@ -234,13 +308,27 @@ OperationResult Mesh::extrudeFace(FaceId faceId, Vec3 offset) {
         return {false, OperationError::invalidArgument,
                 "extrude offset must be finite and nonzero", {}, {}};
     }
+    if (revision_ == std::numeric_limits<std::uint64_t>::max()) {
+        return {false, OperationError::revisionExhausted,
+                "extrude cannot advance the terminal mesh revision", {}, {}};
+    }
+    const std::size_t allocationCount = source->vertices.size();
+    if (!hasIdCapacity(nextVertexId_, allocationCount) ||
+        !hasIdCapacity(nextFaceId_, allocationCount)) {
+        return {false, OperationError::idExhausted,
+                "extrude cannot allocate stable IDs without exhausting the ID space", {}, {}};
+    }
 
     Mesh candidate = *this;
     const std::vector<VertexId> original = source->vertices;
+    std::vector<Vec3> originalPositions;
+    originalPositions.reserve(original.size());
+    for (const VertexId id : original) {
+        originalPositions.push_back(candidate.vertex(id)->position);
+    }
     std::vector<VertexId> cap;
     cap.reserve(original.size());
-    for (const VertexId id : original) {
-        const Vec3 position = candidate.vertex(id)->position;
+    for (const Vec3 position : originalPositions) {
         const VertexId added = candidate.nextVertexId_++;
         candidate.vertices_.push_back(
             {added, {position.x + offset.x, position.y + offset.y, position.z + offset.z}});
@@ -262,13 +350,15 @@ OperationResult Mesh::extrudeFace(FaceId faceId, Vec3 offset) {
         affected.push_back(side);
     }
 
+    candidate.rebuildVertexLookup();
     const ValidationResult validation = candidate.validate();
     if (!validation.ok) {
         return {false, OperationError::topologyInvalid, validation.error, {}, {}};
     }
     ++candidate.revision_;
-    *this = std::move(candidate);
-    return {true, OperationError::none, {}, cap, affected};
+    OperationResult success{true, OperationError::none, {}, std::move(cap),
+                            std::move(affected)};
+    return commitCandidate(*this, std::move(candidate), std::move(success));
 }
 
 OperationResult Mesh::mergeVertices(VertexId targetId, VertexId sourceId) {
@@ -280,6 +370,10 @@ OperationResult Mesh::mergeVertices(VertexId targetId, VertexId sourceId) {
     const Vertex* source = vertex(sourceId);
     if (target == nullptr || source == nullptr) {
         return {false, OperationError::notFound, "merge vertex does not exist", {}, {}};
+    }
+    if (revision_ == std::numeric_limits<std::uint64_t>::max()) {
+        return {false, OperationError::revisionExhausted,
+                "merge cannot advance the terminal mesh revision", {}, {}};
     }
 
     Mesh candidate = *this;
@@ -327,43 +421,80 @@ OperationResult Mesh::mergeVertices(VertexId targetId, VertexId sourceId) {
         std::remove_if(candidate.vertices_.begin(), candidate.vertices_.end(),
                        [sourceId](const Vertex& item) { return item.id == sourceId; }),
         candidate.vertices_.end());
+    candidate.rebuildVertexLookup();
     const ValidationResult validation = candidate.validate();
     if (!validation.ok) {
         return {false, OperationError::topologyInvalid, validation.error, {}, {}};
     }
     ++candidate.revision_;
-    *this = std::move(candidate);
-    return {true, OperationError::none, {}, {}, affected};
+    OperationResult success{true, OperationError::none, {}, {}, std::move(affected)};
+    return commitCandidate(*this, std::move(candidate), std::move(success));
 }
 
 ValidationResult Mesh::validate() const {
-    std::unordered_set<VertexId> vertexIds;
-    for (const auto& item : vertices_) {
-        if (item.id == 0 || !vertexIds.insert(item.id).second) {
+    if (vertexLookup_.size() != vertices_.size()) {
+        return {false, "vertex lookup index must be complete"};
+    }
+    for (std::size_t index = 0; index < vertexLookup_.size(); ++index) {
+        const auto [id, storageIndex] = vertexLookup_[index];
+        if (storageIndex >= vertices_.size() || vertices_[storageIndex].id != id) {
+            return {false, "vertex lookup index must map IDs to their stored vertices"};
+        }
+        if (index != 0 && vertexLookup_[index - 1].first >= id) {
+            return {false, "vertex lookup index must be sorted with unique IDs"};
+        }
+    }
+    for (std::size_t storageIndex = 0; storageIndex < vertices_.size(); ++storageIndex) {
+        const Vertex& item = vertices_[storageIndex];
+        if (item.id == 0) {
             return {false, "vertex IDs must be nonzero and unique"};
         }
         if (!std::isfinite(item.position.x) || !std::isfinite(item.position.y) ||
             !std::isfinite(item.position.z)) {
             return {false, "vertex positions must be finite"};
         }
+        const auto found = std::lower_bound(
+            vertexLookup_.begin(), vertexLookup_.end(), item.id,
+            [](const auto& entry, VertexId sought) { return entry.first < sought; });
+        if (found == vertexLookup_.end() || found->first != item.id ||
+            found->second != storageIndex) {
+            return {false, "vertex lookup index must be complete"};
+        }
     }
-    std::unordered_set<FaceId> faceIds;
+    if (nextVertexId_ == 0 ||
+        (!vertexLookup_.empty() && nextVertexId_ <= vertexLookup_.back().first)) {
+        return {false, "next vertex ID must be nonzero and greater than existing IDs"};
+    }
+
+    std::vector<FaceId> faceIds;
+    faceIds.reserve(faces_.size());
     for (const auto& item : faces_) {
-        if (item.id == 0 || !faceIds.insert(item.id).second) {
+        if (item.id == 0) {
             return {false, "face IDs must be nonzero and unique"};
         }
+        faceIds.push_back(item.id);
         if (item.vertices.size() < 3) {
             return {false, "faces need at least three vertices"};
         }
-        std::unordered_set<VertexId> references;
+        std::vector<VertexId> references;
+        references.reserve(item.vertices.size());
         for (const VertexId id : item.vertices) {
-            if (!vertexIds.contains(id)) {
+            if (vertex(id) == nullptr) {
                 return {false, "face references a missing vertex"};
             }
-            if (!references.insert(id).second) {
-                return {false, "face vertices must be unique"};
-            }
+            references.push_back(id);
         }
+        std::sort(references.begin(), references.end());
+        if (std::adjacent_find(references.begin(), references.end()) != references.end()) {
+            return {false, "face vertices must be unique"};
+        }
+    }
+    std::sort(faceIds.begin(), faceIds.end());
+    if (std::adjacent_find(faceIds.begin(), faceIds.end()) != faceIds.end()) {
+        return {false, "face IDs must be nonzero and unique"};
+    }
+    if (nextFaceId_ == 0 || (!faceIds.empty() && nextFaceId_ <= faceIds.back())) {
+        return {false, "next face ID must be nonzero and greater than existing IDs"};
     }
     return {true, {}};
 }

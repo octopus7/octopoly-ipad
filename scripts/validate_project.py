@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Deterministic Phase 1 structure and action-reachability validation.
+"""Deterministic Phase 2 structure and action-reachability validation.
 
 This intentionally does not claim to parse or compile an Xcode project. It checks
-that required files are referenced by the project and that every UI action has a
-literal Swift -> Objective-C++ -> portable-core path followed by geometry refresh.
+that required files are referenced by the project, modelling actions have a literal
+Swift -> Objective-C++ -> portable-core path, and Save/Load reaches real Swift file
+I/O, the bridge, and the portable project codec.
 """
 
 from __future__ import annotations
@@ -33,11 +34,17 @@ required_files = [
     "LICENSE",
     "README.md",
     "ROADMAP.md",
+    "docs/FORMAT.md",
     "docs/verification/phase-1.md",
+    "docs/verification/phase-2.md",
     "CMakeLists.txt",
     "core/include/octopoly/mesh.hpp",
+    "core/include/octopoly/project_codec.hpp",
     "core/src/mesh.cpp",
+    "core/src/project_codec.cpp",
     "tests/test_mesh.cpp",
+    "tests/test_project_codec.cpp",
+    "tests/test_mesh_allocation_faults.cpp",
     "app/OctoPolyIPad/Sources/OctoPolyIPadApp.swift",
     "app/OctoPolyIPad/Sources/ContentView.swift",
     "app/OctoPolyIPad/Sources/MeshViewModel.swift",
@@ -51,6 +58,7 @@ required_files = [
     "app/OctoPolyIPad/OctoPolyIPad.xcodeproj/xcshareddata/xcschemes/OctoPolyIPad.xcscheme",
     "scripts/mac/remote-build.sh",
     "scripts/mac/install-device.sh",
+    "scripts/check.sh",
     "ci/github-actions/linux.yml",
     "ci/github-actions/macos.yml",
 ]
@@ -81,13 +89,57 @@ for phase, markers in required_phase_markers.items():
     for marker in markers:
         if marker not in roadmap:
             fail(f"ROADMAP.md Phase {phase} missing required scope marker: {marker}")
+if "## Phase 1 — Portable mesh core and iPad shell (complete)" not in roadmap:
+    fail("ROADMAP.md must keep Phase 1 complete")
+if "## Phase 2 — Native project save and load (complete)" not in roadmap:
+    fail("ROADMAP.md must mark Phase 2 complete")
+for phase in range(3, 11):
+    if not re.search(rf"^## Phase {phase} .* \(planned\)$", roadmap, re.MULTILINE):
+        fail(f"ROADMAP.md must keep Phase {phase} planned")
 print("[static] OK MIT license and required roadmap phases 1-10")
 
 cmake = read("CMakeLists.txt")
-for marker in ["add_library(octopoly_core STATIC", "add_executable(octopoly_core_tests", "add_test(NAME octopoly_core_tests"]:
+cmake_markers = [
+    "add_library(octopoly_core STATIC",
+    "core/src/project_codec.cpp",
+    "add_executable(octopoly_core_tests",
+    "tests/test_mesh.cpp",
+    "target_link_libraries(octopoly_core_tests PRIVATE octopoly_core)",
+    "add_executable(project_codec_tests",
+    "tests/test_project_codec.cpp",
+    "target_link_libraries(project_codec_tests PRIVATE octopoly_core)",
+    "add_executable(mesh_allocation_fault_tests",
+    "tests/test_mesh_allocation_faults.cpp",
+    "target_link_libraries(mesh_allocation_fault_tests PRIVATE octopoly_core)",
+    "target_compile_options(project_codec_tests PRIVATE /W4 /WX /permissive-)",
+    "target_compile_options(project_codec_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)",
+    "target_compile_options(mesh_allocation_fault_tests PRIVATE /W4 /WX /permissive-)",
+    "target_compile_options(mesh_allocation_fault_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)",
+    "add_test(NAME octopoly_core_tests COMMAND octopoly_core_tests)",
+    "add_test(NAME project_codec_tests COMMAND project_codec_tests)",
+    "add_test(NAME mesh_allocation_fault_tests COMMAND mesh_allocation_fault_tests)",
+]
+for marker in cmake_markers:
     if marker not in cmake:
         fail(f"CMakeLists.txt missing target marker: {marker}")
-print("[static] OK CMake portable core and test targets")
+print("[static] OK CMake core, mesh tests, codec tests, and portable warning gates")
+
+check_script = read("scripts/check.sh")
+check_markers = [
+    "core/src/mesh.cpp tests/test_mesh.cpp",
+    "core/src/mesh.cpp core/src/project_codec.cpp tests/test_project_codec.cpp",
+    "core/src/mesh.cpp core/src/project_codec.cpp tests/test_mesh_allocation_faults.cpp",
+    "./build/check/octopoly_core_tests",
+    "./build/check/project_codec_tests",
+    "./build/check/mesh_allocation_fault_tests",
+    "python3 scripts/validate_project.py",
+]
+for marker in check_markers:
+    if marker not in check_script:
+        fail(f"scripts/check.sh missing Phase 2 gate marker: {marker}")
+if check_script.count("-std=c++20 -Wall -Wextra -Wpedantic -Werror") != 3:
+    fail("scripts/check.sh must warning-clean compile all three C++20 test suites")
+print("[static] OK check.sh warning-clean mesh/codec/fault build and execution wiring")
 
 pbx = read("app/OctoPolyIPad/OctoPolyIPad.xcodeproj/project.pbxproj")
 for opening, closing, name in [("{", "}", "braces"), ("(", ")", "parentheses")]:
@@ -101,6 +153,51 @@ undefined_ids = sorted(referenced_ids - set(declared_ids))
 if undefined_ids:
     fail(f"pbxproj references undefined object IDs: {', '.join(undefined_ids)}")
 
+
+def pbx_object_body(object_id: str) -> str:
+    match = re.search(
+        rf"^\t\t{object_id}(?: /\*.*?\*/)? = \{{\n(.*?)^\t\t\}};",
+        pbx,
+        re.MULTILINE | re.DOTALL,
+    )
+    if match is None:
+        fail(f"pbxproj missing object declaration: {object_id}")
+    return match.group(1)
+
+
+codec_pbx_markers = [
+    "00000000000000000000010E /* project_codec.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = src/project_codec.cpp; sourceTree = \"<group>\"; };",
+    "00000000000000000000010F /* project_codec.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = include/octopoly/project_codec.hpp; sourceTree = \"<group>\"; };",
+    "00000000000000000000020B /* project_codec.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000010E /* project_codec.cpp */; };",
+]
+for marker in codec_pbx_markers:
+    if marker not in pbx:
+        fail(f"pbxproj codec wiring missing deterministic declaration: {marker}")
+
+file_reference_section = pbx.split("/* Begin PBXFileReference section */", 1)[1].split(
+    "/* End PBXFileReference section */", 1
+)[0]
+for filename in ["project_codec.cpp", "project_codec.hpp"]:
+    if file_reference_section.count(f"/* {filename} */") != 1:
+        fail(f"pbxproj must declare exactly one file reference for {filename}")
+
+portable_core_group = pbx_object_body("000000000000000000000005")
+for object_id, filename in [
+    ("00000000000000000000010E", "project_codec.cpp"),
+    ("00000000000000000000010F", "project_codec.hpp"),
+]:
+    if f"{object_id} /* {filename} */," not in portable_core_group:
+        fail(f"Portable Core group missing {filename}")
+
+sources_phase = pbx_object_body("00000000000000000000000F")
+if "00000000000000000000020B /* project_codec.cpp in Sources */," not in sources_phase:
+    fail("Sources build phase missing project_codec.cpp build file")
+
+project_directory = PROJECT.parent.parent
+for relative in ["../../core/src/project_codec.cpp", "../../core/include/octopoly/project_codec.hpp"]:
+    if not (project_directory / relative).resolve().is_file():
+        fail(f"pbxproj codec path does not resolve to a file: {relative}")
+
 pbx_sources = [
     "OctoPolyIPadApp.swift",
     "ContentView.swift",
@@ -110,13 +207,15 @@ pbx_sources = [
     "Shaders.metal",
     "MeshBridge.mm",
     "mesh.cpp",
+    "project_codec.cpp",
 ]
 for filename in pbx_sources:
     marker = f"{filename} in Sources"
     if marker not in pbx:
         fail(f"pbxproj source build phase missing {filename}")
 
-for filename in ["MeshBridge.h", "OctoPolyIPad-Bridging-Header.h", "mesh.hpp"]:
+pbx_headers = ["MeshBridge.h", "OctoPolyIPad-Bridging-Header.h", "mesh.hpp", "project_codec.hpp"]
+for filename in pbx_headers:
     if filename not in pbx:
         fail(f"pbxproj file reference missing {filename}")
 
@@ -128,12 +227,17 @@ for setting in [
 ]:
     if setting not in pbx:
         fail(f"pbxproj required build setting missing: {setting}")
-print(f"[static] OK pbxproj source references ({len(pbx_sources) + 3}) and build settings")
+print(
+    f"[static] OK pbxproj IDs, codec paths/group/build phase, source references "
+    f"({len(pbx_sources) + len(pbx_headers)}), and build settings"
+)
 
 header = read("app/OctoPolyIPad/Sources/MeshBridge.h")
 bridge = read("app/OctoPolyIPad/Sources/MeshBridge.mm")
 model = read("app/OctoPolyIPad/Sources/MeshViewModel.swift")
 content = read("app/OctoPolyIPad/Sources/ContentView.swift")
+codec_header = read("core/include/octopoly/project_codec.hpp")
+codec_source = read("core/src/project_codec.cpp")
 
 actions = {
     "loopCut": "mesh.loopCut(",
@@ -159,9 +263,66 @@ if "let succeeded = operation()\n        refreshGeometry()" not in model:
     fail("view-model operation path does not refresh geometry immediately")
 print(f"[static] OK UI -> bridge -> core action reachability ({len(actions)} actions)")
 
+save_load_markers = [
+    ("@property(nonatomic, readonly, nullable) NSData *encodedProjectData;", header,
+     "bridge encoded NSData declaration"),
+    ("- (BOOL)loadProjectData:(NSData *)data;", header, "bridge atomic load declaration"),
+    ("octopoly::project::encodeProject(mesh)", bridge, "bridge encoder call"),
+    ("octopoly::project::installProject(mesh, bytes)", bridge, "bridge atomic installer call"),
+    ("EncodeResult encodeProject(const Mesh& mesh) noexcept", codec_header,
+     "portable encoder declaration"),
+    ("InstallResult installProject(Mesh& liveMesh", codec_header,
+     "portable atomic installer declaration"),
+    ("EncodeResult encodeProject(const Mesh& mesh) noexcept", codec_source,
+     "portable encoder implementation"),
+    ("DecodeResult decoded = decodeProject(bytes, limits);", codec_source,
+     "installer detached decode"),
+    ("liveMesh = std::move(decoded.mesh);", codec_source,
+     "installer success-only commit"),
+    ("func saveProject()", model, "view-model save action"),
+    ("func loadProject()", model, "view-model load action"),
+    ("OctoPoly.octopoly", model, "Documents project filename"),
+    ("FileManager.default.urls(for: .documentDirectory", model, "Documents directory lookup"),
+    ("data.write(to: projectURL, options: .atomic)", model, "atomic Swift file write"),
+    ("Data(contentsOf: projectURL)", model, "Swift file read"),
+    ("bridge.encodedProjectData", model, "Swift encoder bridge call"),
+    ("if bridge.loadProjectData(data) {\n                refreshGeometry()", model,
+     "successful-load-only geometry refresh"),
+    ("Button(\"Save\") { model.saveProject() }", content, "reachable Save control"),
+    ("Button(\"Load\") { model.loadProject() }", content, "reachable Load control"),
+]
+for marker, source, label in save_load_markers:
+    if marker not in source:
+        fail(f"Save/Load path missing {label}: {marker}")
+print("[static] OK Save/Load UI -> Swift atomic Documents I/O -> bridge -> codec reachability")
+
+format_doc = read("docs/FORMAT.md")
+format_markers = [
+    "32-byte header",
+    "`OCTOPOLY`",
+    "little-endian",
+    "CRC-32/IEEE",
+    "48-byte payload prefix",
+    "64 MiB",
+    "1,000,000",
+    "4,000,000",
+    "Data.write(to:options: .atomic)",
+    "derived stable-vertex lookup index",
+    "allocation-free triangle visitation",
+    "no transient `std::vector<Triangle>` copy",
+]
+for marker in format_markers:
+    if marker not in format_doc:
+        fail(f"docs/FORMAT.md missing implemented-format marker: {marker}")
+print("[static] OK implemented wire-format and atomicity documentation markers")
+
 render_markers = [
     ("octopoly::Mesh::makeDefaultCube()", bridge, "default cube"),
-    ("mesh.triangulate()", bridge, "core triangulation"),
+    ("mesh.visitTriangles(", bridge, "allocation-free core triangle visitation"),
+    ("checkedMultiplySize(triangleCount, 3", bridge, "checked render vertex count"),
+    ("checkedMultiplySize(renderVertexCount, sizeof(RenderVertex)", bridge,
+     "checked render byte capacity"),
+    ("std::numeric_limits<NSUInteger>::max()", bridge, "Foundation capacity bound"),
     ("@property(nonatomic, readonly) NSData *triangleVertexData;", header, "bridge geometry property"),
     ("bridge.triangleVertexData as Data", model, "geometry publication"),
     ("MetalViewport(model: model)", content, "Metal viewport"),
@@ -170,7 +331,7 @@ render_markers = [
 for marker, source, label in render_markers:
     if marker not in source:
         fail(f"render path missing {label}: {marker}")
-print("[static] OK cube -> triangulation -> bridge -> Metal triangle render path")
+print("[static] OK cube -> streamed core triangulation -> checked bridge buffer -> Metal render path")
 
 remote = read("scripts/mac/remote-build.sh")
 install = read("scripts/mac/install-device.sh")

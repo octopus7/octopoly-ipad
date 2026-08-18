@@ -3,10 +3,16 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace octopoly {
+
+namespace project {
+struct MeshProjectAccess;
+}
 
 using VertexId = std::uint64_t;
 using FaceId = std::uint64_t;
@@ -45,6 +51,8 @@ enum class OperationError {
     notFound,
     unsupported,
     invalidArgument,
+    idExhausted,
+    revisionExhausted,
     topologyInvalid,
 };
 
@@ -63,13 +71,32 @@ struct ValidationResult {
 
 class Mesh {
 public:
+    Mesh() = default;
+    Mesh(const Mesh&) = default;
+    Mesh& operator=(const Mesh& other);
+    Mesh(Mesh&&) noexcept = default;
+    Mesh& operator=(Mesh&&) noexcept = default;
+
     static Mesh makeDefaultCube();
 
     [[nodiscard]] const std::vector<Vertex>& vertices() const noexcept;
     [[nodiscard]] const std::vector<Face>& faces() const noexcept;
     [[nodiscard]] const Vertex* vertex(VertexId id) const noexcept;
     [[nodiscard]] const Face* face(FaceId id) const noexcept;
+    [[nodiscard]] VertexId nextVertexId() const noexcept;
+    [[nodiscard]] FaceId nextFaceId() const noexcept;
     [[nodiscard]] std::uint64_t revision() const noexcept;
+    template <typename Visitor>
+    void visitTriangles(Visitor&& visitor) const {
+        for (const Face& polygon : faces_) {
+            for (std::size_t index = 1; index + 1 < polygon.vertices.size(); ++index) {
+                std::invoke(visitor,
+                            Triangle{polygon.id,
+                                     {polygon.vertices[0], polygon.vertices[index],
+                                      polygon.vertices[index + 1]}});
+            }
+        }
+    }
     [[nodiscard]] std::vector<Triangle> triangulate() const;
     [[nodiscard]] ValidationResult validate() const;
 
@@ -85,7 +112,12 @@ public:
     OperationResult mergeVertices(VertexId targetId, VertexId sourceId);
 
 private:
+    friend struct project::MeshProjectAccess;
+
+    void rebuildVertexLookup();
+
     std::vector<Vertex> vertices_;
+    std::vector<std::pair<VertexId, std::size_t>> vertexLookup_;
     std::vector<Face> faces_;
     VertexId nextVertexId_{1};
     FaceId nextFaceId_{1};

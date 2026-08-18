@@ -15,6 +15,8 @@ struct ContentView: View {
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack {
+                    Button("Save") { model.saveProject() }
+                    Button("Load") { model.loadProject() }
                     Button("Loop Cut") { model.loopCut() }
                     Button("Knife Cut") { model.knifeCut() }
                     Button("Inset") { model.inset() }

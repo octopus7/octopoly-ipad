@@ -1,12 +1,12 @@
 # OctoPoly iPad Roadmap
 
-각 차수는 독립적인 구현·정적 검사·커밋·푸시 경계다. 현재 저장소 상태에서는 Phase 1만 구현되었으며, 이후 차수는 계획 상태다.
+각 차수는 독립적인 구현·정적 검사·커밋·푸시 경계다. 현재 저장소 상태에서는 Phase 1과 Phase 2가 구현되었으며, 이후 차수는 계획 상태다.
 
 ## Phase 1 — Portable mesh core and iPad shell (complete)
 
 C++20 메시 코어, 안정 ID, 유효성 검사와 revision, 결정적 삼각분할, 기본 큐브, 제한된 단일 면 Loop Cut·Knife Cut·Inset·Merge·Extrude, SwiftUI/MetalKit 셸, Objective-C++ 브리지를 구현한다.
 
-## Phase 2 — Native project save and load (planned)
+## Phase 2 — Native project save and load (complete)
 
 버전이 명시된 OctoPoly 자체 포맷으로 프로젝트를 결정적으로 저장·로드한다. 손상·잘림·과도한 리소스 입력을 거부하고, 실패 시 기존 문서를 변경하지 않는 원자적 로드를 보장한다.
 

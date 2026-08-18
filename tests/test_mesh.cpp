@@ -85,6 +85,28 @@ void triangulation_is_deterministic_and_references_mesh_vertices() {
     }
 }
 
+void streaming_triangulation_matches_materialized_sequence() {
+    std::vector<Mesh> examples;
+    examples.push_back(Mesh::makeDefaultCube());
+
+    Mesh edited = Mesh::makeDefaultCube();
+    require(edited.loopCut(edited.faces().front().id).ok,
+            "streaming fixture loop cut must succeed");
+    require(edited.insetFace(edited.faces()[1].id, 0.2).ok,
+            "streaming fixture inset must succeed");
+    examples.push_back(std::move(edited));
+
+    for (const Mesh& mesh : examples) {
+        const std::vector<octopoly::Triangle> expected = mesh.triangulate();
+        std::vector<octopoly::Triangle> visited;
+        mesh.visitTriangles([&visited](const octopoly::Triangle& triangle) {
+            visited.push_back(triangle);
+        });
+        require_equal(visited, expected,
+                      "allocation-free visitation must preserve exact fan triangle order");
+    }
+}
+
 void loop_cut_splits_a_quad_at_opposite_edge_midpoints() {
     Mesh mesh = Mesh::makeDefaultCube();
     const FaceId target = mesh.faces().front().id;
@@ -320,6 +342,7 @@ int main(int argc, char** argv) {
     const std::vector<TestCase> tests{
         {"default_cube_is_valid_and_stable", default_cube_is_valid_and_stable},
         {"triangulation_is_deterministic_and_references_mesh_vertices", triangulation_is_deterministic_and_references_mesh_vertices},
+        {"streaming_triangulation_matches_materialized_sequence", streaming_triangulation_matches_materialized_sequence},
         {"loop_cut_splits_a_quad_at_opposite_edge_midpoints", loop_cut_splits_a_quad_at_opposite_edge_midpoints},
         {"loop_cut_propagates_edge_points_to_adjacent_cube_faces", loop_cut_propagates_edge_points_to_adjacent_cube_faces},
         {"invalid_loop_cut_is_atomic_and_reports_not_found", invalid_loop_cut_is_atomic_and_reports_not_found},

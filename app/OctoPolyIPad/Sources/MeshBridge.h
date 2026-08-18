@@ -11,8 +11,10 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, readonly) NSUInteger revision;
 @property(nonatomic, copy, readonly) NSString *lastError;
 @property(nonatomic, readonly) NSData *triangleVertexData;
+@property(nonatomic, readonly, nullable) NSData *encodedProjectData;
 
 - (void)resetCube;
+- (BOOL)loadProjectData:(NSData *)data;
 - (BOOL)loopCut;
 - (BOOL)knifeCut;
 - (BOOL)inset;
