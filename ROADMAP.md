@@ -1,6 +1,6 @@
 # OctoPoly iPad Roadmap
 
-각 차수는 독립적인 구현·정적 검사·커밋·푸시 경계다. 현재 저장소 상태에서는 Phase 1과 Phase 2가 구현되었으며, 이후 차수는 계획 상태다.
+각 차수는 독립적인 구현·정적 검사·커밋·푸시 경계다. 현재 저장소 상태에서는 Phase 1부터 Phase 3까지 구현되었으며, 이후 차수는 계획 상태다.
 
 ## Phase 1 — Portable mesh core and iPad shell (complete)
 
@@ -10,7 +10,7 @@ C++20 메시 코어, 안정 ID, 유효성 검사와 revision, 결정적 삼각�
 
 버전이 명시된 OctoPoly 자체 포맷으로 프로젝트를 결정적으로 저장·로드한다. 손상·잘림·과도한 리소스 입력을 거부하고, 실패 시 기존 문서를 변경하지 않는 원자적 로드를 보장한다.
 
-## Phase 3 — GLB import and export (planned)
+## Phase 3 — GLB import and export (complete)
 
 지원 범위를 명시한 glTF 2.0 Binary(GLB) 임포트·익스포트를 구현한다. 알 수 없거나 미지원인 필드는 조용히 손실시키지 않고 명시적으로 오류 또는 진단을 반환한다.
 

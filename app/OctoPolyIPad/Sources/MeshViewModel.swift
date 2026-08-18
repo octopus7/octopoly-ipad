@@ -12,6 +12,10 @@ final class MeshViewModel: ObservableObject {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("OctoPoly.octopoly", isDirectory: false)
     }
+    private var glbURL: URL {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("OctoPoly.glb", isDirectory: false)
+    }
 
     init() {
         refreshGeometry()
@@ -42,6 +46,37 @@ final class MeshViewModel: ObservableObject {
             }
         } catch {
             status = "Load failed: \(error.localizedDescription)"
+        }
+    }
+
+    func exportGlb() {
+        guard let encoded = bridge.encodedGlbData else {
+            status = "GLB export failed: \(bridge.lastError)"
+            return
+        }
+        do {
+            let data = encoded as Data
+            try data.write(to: glbURL, options: .atomic)
+            status = "Exported OctoPoly.glb (polygons triangulated)"
+        } catch {
+            status = "GLB export failed: \(error.localizedDescription)"
+        }
+    }
+
+    func importGlb() {
+        do {
+            let data = try Data(contentsOf: glbURL)
+            if bridge.loadGlbData(data) {
+                refreshGeometry()
+                let diagnostics = bridge.glbDiagnostics
+                status = diagnostics.isEmpty
+                    ? "Imported OctoPoly.glb"
+                    : "Imported OctoPoly.glb with warnings: \(diagnostics)"
+            } else {
+                status = "GLB import failed: \(bridge.lastError)"
+            }
+        } catch {
+            status = "GLB import failed: \(error.localizedDescription)"
         }
     }
 

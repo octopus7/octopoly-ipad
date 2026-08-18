@@ -17,6 +17,8 @@ struct ContentView: View {
                 HStack {
                     Button("Save") { model.saveProject() }
                     Button("Load") { model.loadProject() }
+                    Button("Export GLB") { model.exportGlb() }
+                    Button("Import GLB") { model.importGlb() }
                     Button("Loop Cut") { model.loopCut() }
                     Button("Knife Cut") { model.knifeCut() }
                     Button("Inset") { model.inset() }

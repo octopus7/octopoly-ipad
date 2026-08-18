@@ -1,4 +1,5 @@
 #include "octopoly/mesh.hpp"
+#include "octopoly/glb_codec.hpp"
 #include "octopoly/project_codec.hpp"
 
 #include <algorithm>
@@ -339,6 +340,55 @@ void copy_assignment_allocation_failures_are_atomic() {
     throw std::runtime_error("copy assignment did not reach a successful allocation ordinal");
 }
 
+void glb_decode_allocation_failures_are_typed_and_install_is_atomic() {
+    constexpr std::size_t maximumOrdinal = 4'096;
+    const Mesh replacement = Mesh::makeDefaultCube();
+    const auto encoded = octopoly::glb::encodeGlb(replacement);
+    require(encoded.ok, "GLB replacement fixture must encode");
+    const auto decodedReplacement = octopoly::glb::decodeGlb(encoded.bytes);
+    require(decodedReplacement.ok, "GLB replacement fixture must decode");
+    const Mesh expected = decodedReplacement.mesh;
+    std::size_t observedFailures = 0;
+
+    for (std::size_t ordinal = 0; ordinal < maximumOrdinal; ++ordinal) {
+        Mesh live = Mesh::makeDefaultCube();
+        require(live.extrudeFace(live.faces().front().id, {0.0, 0.0, -0.25}).ok,
+                "GLB live fixture edit must succeed");
+        const Mesh before = live;
+        const auto beforeEncoding = encodeProject(live);
+        require(beforeEncoding.ok, "GLB live fixture must encode canonically");
+
+        octopoly::glb::InstallResult result;
+        {
+            allocation_fault::Scope fault(ordinal);
+            result = octopoly::glb::installGlb(live, encoded.bytes);
+        }
+
+        if (!result.ok) {
+            require(result.error.code == octopoly::glb::DecodeErrorCode::allocationFailed,
+                    "every injected GLB allocation failure must be typed");
+            ++observedFailures;
+            require_same_mesh(live, before,
+                              "typed GLB allocation failure must preserve complete live state");
+            const auto afterEncoding = encodeProject(live);
+            require(afterEncoding.ok,
+                    "GLB live mesh must remain encodable after allocation failure");
+            require(afterEncoding.bytes == beforeEncoding.bytes,
+                    "typed GLB allocation failure must preserve canonical live bytes");
+            continue;
+        }
+
+        require(observedFailures > 0,
+                "GLB install must observe at least one typed allocation failure");
+        require_same_mesh(live, expected,
+                          "first non-failing GLB install must atomically install triangulated mesh");
+        require(live.validate().ok, "successful GLB install must validate");
+        return;
+    }
+
+    throw std::runtime_error("GLB install did not reach a successful allocation ordinal");
+}
+
 }  // namespace
 
 int main() {
@@ -377,6 +427,14 @@ int main() {
         std::cerr << "FAIL copy assignment allocation failures are atomic: "
                   << error.what() << '\n';
     }
-    std::cout << operations.size() + 2 << " test(s), " << failures << " failure(s)\n";
+    try {
+        glb_decode_allocation_failures_are_typed_and_install_is_atomic();
+        std::cout << "PASS GLB allocation failures are typed and install is atomic\n";
+    } catch (const std::exception& error) {
+        ++failures;
+        std::cerr << "FAIL GLB allocation failures are typed and install is atomic: "
+                  << error.what() << '\n';
+    }
+    std::cout << operations.size() + 3 << " test(s), " << failures << " failure(s)\n";
     return failures == 0 ? 0 : 1;
 }

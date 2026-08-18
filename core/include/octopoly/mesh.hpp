@@ -13,6 +13,9 @@ namespace octopoly {
 namespace project {
 struct MeshProjectAccess;
 }
+namespace glb {
+struct MeshGlbAccess;
+}
 
 using VertexId = std::uint64_t;
 using FaceId = std::uint64_t;
@@ -113,6 +116,7 @@ public:
 
 private:
     friend struct project::MeshProjectAccess;
+    friend struct glb::MeshGlbAccess;
 
     void rebuildVertexLookup();
 

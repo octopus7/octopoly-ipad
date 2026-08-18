@@ -6,15 +6,19 @@ NS_ASSUME_NONNULL_BEGIN
 @private
     void *_meshStorage;
     NSString *_lastError;
+    NSString *_glbDiagnostics;
 }
 
 @property(nonatomic, readonly) NSUInteger revision;
 @property(nonatomic, copy, readonly) NSString *lastError;
 @property(nonatomic, readonly) NSData *triangleVertexData;
 @property(nonatomic, readonly, nullable) NSData *encodedProjectData;
+@property(nonatomic, readonly, nullable) NSData *encodedGlbData;
+@property(nonatomic, copy, readonly) NSString *glbDiagnostics;
 
 - (void)resetCube;
 - (BOOL)loadProjectData:(NSData *)data;
+- (BOOL)loadGlbData:(NSData *)data;
 - (BOOL)loopCut;
 - (BOOL)knifeCut;
 - (BOOL)inset;

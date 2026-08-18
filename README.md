@@ -1,6 +1,6 @@
 # OctoPoly for iPad
 
-OctoPoly is an iPad-first polygon modelling experiment. Phases 1 and 2 provide a portable C++20 mesh core, a deterministic native project codec, and a thin SwiftUI/MetalKit application shell. The app starts with a cube, triangulates it for Metal rendering, and exposes live controls for Save, Load, Loop Cut, Knife Cut, Inset, Merge, and Extrude.
+OctoPoly is an iPad-first polygon modelling experiment. Phases 1-3 provide a portable C++20 mesh core, deterministic native project and GLB codecs, and a thin SwiftUI/MetalKit application shell. The app starts with a cube, triangulates it for Metal rendering, and exposes live controls for Save, Load, GLB Export/Import, Loop Cut, Knife Cut, Inset, Merge, and Extrude.
 
 ## Phase 1 scope
 
@@ -17,7 +17,14 @@ OctoPoly is an iPad-first polygon modelling experiment. Phases 1 and 2 provide a
 - The iPad shell stores one project at the app sandbox's Documents URL as `OctoPoly.octopoly`. The concrete on-device container path is assigned by iPadOS and must not be assumed to be stable.
 - Foundation performs saving with `Data.write(to:options: .atomic)` and reading with `Data(contentsOf:)`; geometry refresh occurs only after a successful load.
 
-Phases 3-10 are described in [ROADMAP.md](ROADMAP.md) and are not implemented here.
+## Phase 3 GLB exchange
+
+- Deterministic glTF 2.0 Binary export writes POSITION and indexed TRIANGLES with checked headers, chunks, padding, lengths, and position bounds.
+- Strict bounded import supports the subset documented in [docs/GLB.md](docs/GLB.md), including uint8/uint16/uint32 indices, non-indexed triangles, offsets/strides, and multiple primitives.
+- Unsupported transforms, skins, animations, morphs, extensions, external buffers, and non-triangle modes return typed errors. Ignored optional visual attributes/materials return visible diagnostics.
+- Export/Import controls use Documents/`OctoPoly.glb`; failed imports leave the live mesh unchanged and successful imports alone refresh published geometry.
+
+Phases 4-10 are described in [ROADMAP.md](ROADMAP.md) and are not implemented here.
 
 ## Linux verification
 
@@ -25,7 +32,7 @@ Phases 3-10 are described in [ROADMAP.md](ROADMAP.md) and are not implemented he
 ./scripts/check.sh
 ```
 
-The check uses `${CXX:-g++}` with C++20 and `-Wall -Wextra -Wpedantic -Werror`, runs all three portable suites (`octopoly_core_tests`, `project_codec_tests`, and `mesh_allocation_fault_tests`), and executes deterministic project-structure/action-reachability checks. `CMakeLists.txt` is provided for CMake-capable hosts, but CMake is not required by the Linux check. This validates portable code and Xcode project structure; it is not an iPadOS build.
+The check uses `${CXX:-g++}` with C++20 and `-Wall -Wextra -Wpedantic -Werror`, runs all four portable suites (`octopoly_core_tests`, `project_codec_tests`, `mesh_allocation_fault_tests`, and `glb_codec_tests`), and executes deterministic project-structure/action-reachability checks. `CMakeLists.txt` is provided for CMake-capable hosts, but CMake is not required by the Linux check. This validates portable code and Xcode project structure; it is not an iPadOS build.
 
 GitHub Actions용 Linux·macOS 구성은 `ci/github-actions/`에 템플릿으로 보관한다. 현재 GitHub OAuth 자격 증명에 `workflow` scope가 없어 활성 `.github/workflows/` 경로는 별도 권한 승인 전까지 만들지 않는다. 로컬 `scripts/check.sh`가 차수 완료 검사의 기준이다.
 
@@ -33,7 +40,7 @@ GitHub Actions용 Linux·macOS 구성은 `ci/github-actions/`에 템플릿으로
 
 Open `app/OctoPolyIPad/OctoPolyIPad.xcodeproj` on a Mac with Xcode. The shared `OctoPolyIPad` scheme targets iPadOS 17 or newer. Choose a simulator for an unsigned build, or configure your own Apple team and unique bundle identifier for a device build.
 
-No Xcode or device build was run during Linux Phase 1 or Phase 2 verification. See [docs/verification/phase-1.md](docs/verification/phase-1.md) and [docs/verification/phase-2.md](docs/verification/phase-2.md).
+No Xcode or device build was run during Linux Phase 1, Phase 2, or Phase 3 verification. See [docs/verification/phase-1.md](docs/verification/phase-1.md), [docs/verification/phase-2.md](docs/verification/phase-2.md), and [docs/verification/phase-3.md](docs/verification/phase-3.md).
 
 ## Remote Mac helpers
 

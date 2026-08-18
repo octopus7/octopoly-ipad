@@ -1,6 +1,7 @@
 #import "MeshBridge.h"
 
 #include "octopoly/mesh.hpp"
+#include "octopoly/glb_codec.hpp"
 #include "octopoly/project_codec.hpp"
 
 #include <cstddef>
@@ -8,6 +9,7 @@
 #include <limits>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace {
 
@@ -38,6 +40,24 @@ static void storeCodecError(NSString *__strong *lastError, std::string_view mess
     *lastError = text != nil ? text : @"Project codec failed.";
 }
 
+static void storeGlbDiagnostics(NSString *__strong *destination,
+                                const std::vector<octopoly::glb::Diagnostic>& diagnostics) {
+    NSMutableString *text = [NSMutableString string];
+    for (const octopoly::glb::Diagnostic& diagnostic : diagnostics) {
+        NSString *message = [[NSString alloc] initWithBytes:diagnostic.message.data()
+                                                     length:diagnostic.message.size()
+                                                   encoding:NSUTF8StringEncoding];
+        if (message == nil) {
+            message = @"GLB import discarded unsupported visual data.";
+        }
+        if (text.length != 0) {
+            [text appendString:@"; "];
+        }
+        [text appendString:message];
+    }
+    *destination = [text copy];
+}
+
 static bool checkedMultiplySize(std::size_t first, std::size_t second,
                                 std::size_t& result) noexcept {
     if (first != 0 && second > std::numeric_limits<std::size_t>::max() / first) {
@@ -56,6 +76,7 @@ static bool checkedMultiplySize(std::size_t first, std::size_t second,
     if (self != nil) {
         _meshStorage = new octopoly::Mesh(octopoly::Mesh::makeDefaultCube());
         _lastError = @"";
+        _glbDiagnostics = @"";
     }
     return self;
 }
@@ -70,6 +91,10 @@ static bool checkedMultiplySize(std::size_t first, std::size_t second,
 
 - (NSString *)lastError {
     return _lastError;
+}
+
+- (NSString *)glbDiagnostics {
+    return _glbDiagnostics;
 }
 
 - (NSData *)triangleVertexData {
@@ -151,9 +176,38 @@ static bool checkedMultiplySize(std::size_t first, std::size_t second,
     return YES;
 }
 
+- (NSData *)encodedGlbData {
+    const octopoly::Mesh& mesh = meshFromStorage(_meshStorage);
+    octopoly::glb::EncodeResult result = octopoly::glb::encodeGlb(mesh);
+    if (!result.ok) {
+        storeCodecError(&_lastError, result.error.message);
+        _glbDiagnostics = @"";
+        return nil;
+    }
+    _lastError = @"";
+    _glbDiagnostics = @"";
+    return [NSData dataWithBytes:result.bytes.data() length:result.bytes.size()];
+}
+
+- (BOOL)loadGlbData:(NSData *)data {
+    octopoly::Mesh& mesh = meshFromStorage(_meshStorage);
+    const auto *dataBytes = static_cast<const std::uint8_t *>(data.bytes);
+    const std::span<const std::uint8_t> bytes(dataBytes, static_cast<std::size_t>(data.length));
+    octopoly::glb::InstallResult result = octopoly::glb::installGlb(mesh, bytes);
+    if (!result.ok) {
+        storeCodecError(&_lastError, result.error.message);
+        _glbDiagnostics = @"";
+        return NO;
+    }
+    _lastError = @"";
+    storeGlbDiagnostics(&_glbDiagnostics, result.diagnostics);
+    return YES;
+}
+
 - (void)resetCube {
     meshFromStorage(_meshStorage) = octopoly::Mesh::makeDefaultCube();
     _lastError = @"";
+    _glbDiagnostics = @"";
 }
 
 - (BOOL)loopCut {
