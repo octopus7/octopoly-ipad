@@ -55,6 +55,13 @@ The script contains no credentials and relies on your SSH agent/configuration.
 
 `scripts/mac/install-device.sh` runs `xcrun devicectl device install app` locally on a Mac. Set `OCTOPOLY_DEVICE_ID` and `OCTOPOLY_APP_PATH` to a paired device identifier and a signed `.app` path. Device installation requires a trusted, paired device with Developer Mode and valid signing. A free Personal Team development profile normally expires after 7 days, so the app must be rebuilt/reinstalled; this is personal testing, not App Store, TestFlight, or Ad Hoc distribution.
 
+## Build infrastructure design
+
+- [Windows → Mac remote Apple build architecture](docs/WINDOWS_MAC_REMOTE_BUILD_ARCHITECTURE.md) — proposed controller for the native Metal app and Unreal Engine 5.7 iOS/iPadOS builds. UE Cook and Metal shader compilation are Windows-only; UE signed profiles stay disabled until the documented signing-contract probe passes.
+- [Free Personal Team wireless device installation](docs/FREE_PERSONAL_TEAM_WIRELESS_INSTALL.md) — documented Native path for initial cable pairing followed by Windows-over-SSH and Mac-over-network installation without paid Apple Developer Program enrollment; UE Personal Team signing remains gated by a project-specific probe.
+
+These documents are implementation designs. The current Phase 1 helpers do not yet implement the full orchestrator.
+
 ## License
 
 MIT — Copyright 2026 octopus7.
