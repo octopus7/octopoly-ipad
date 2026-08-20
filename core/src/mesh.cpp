@@ -100,7 +100,7 @@ void Mesh::rebuildVertexLookup() {
     vertexLookup_ = std::move(rebuilt);
 }
 
-OperationResult Mesh::loopCut(FaceId faceId) {
+OperationResult Mesh::preflightLoopCut(FaceId faceId) const {
     const auto found = std::find_if(faces_.begin(), faces_.end(),
                                     [faceId](const Face& item) { return item.id == faceId; });
     if (found == faces_.end()) {
@@ -109,11 +109,20 @@ OperationResult Mesh::loopCut(FaceId faceId) {
     if (found->vertices.size() != 4) {
         return {false, OperationError::unsupported, "loop cut currently supports a single quad", {}, {}};
     }
+    return {true, OperationError::none, {}, {}, {}};
+}
+
+OperationResult Mesh::loopCut(FaceId faceId) {
+    OperationResult preflight = preflightLoopCut(faceId);
+    if (!preflight.ok) {
+        return preflight;
+    }
     return knifeCut(faceId, 0, 0.5, 2, 0.5);
 }
 
-OperationResult Mesh::knifeCut(FaceId faceId, std::size_t firstEdge, double firstT,
-                               std::size_t secondEdge, double secondT) {
+OperationResult Mesh::preflightKnifeCut(FaceId faceId, std::size_t firstEdge,
+                                        double firstT, std::size_t secondEdge,
+                                        double secondT) const {
     const Face* source = face(faceId);
     if (source == nullptr) {
         return {false, OperationError::notFound, "knife face does not exist", {}, {}};
@@ -128,6 +137,18 @@ OperationResult Mesh::knifeCut(FaceId faceId, std::size_t firstEdge, double firs
         secondT <= 0.0 || secondT >= 1.0) {
         return {false, OperationError::invalidArgument, "knife edge parameters must be inside (0, 1)", {}, {}};
     }
+    return {true, OperationError::none, {}, {}, {}};
+}
+
+OperationResult Mesh::knifeCut(FaceId faceId, std::size_t firstEdge, double firstT,
+                               std::size_t secondEdge, double secondT) {
+    OperationResult preflight =
+        preflightKnifeCut(faceId, firstEdge, firstT, secondEdge, secondT);
+    if (!preflight.ok) {
+        return preflight;
+    }
+    const Face* source = face(faceId);
+    const std::size_t count = source->vertices.size();
     if (revision_ == std::numeric_limits<std::uint64_t>::max()) {
         return {false, OperationError::revisionExhausted,
                 "knife cut cannot advance the terminal mesh revision", {}, {}};
@@ -228,7 +249,7 @@ OperationResult Mesh::knifeCut(FaceId faceId, std::size_t firstEdge, double firs
     return commitCandidate(*this, std::move(candidate), std::move(success));
 }
 
-OperationResult Mesh::insetFace(FaceId faceId, double factor) {
+OperationResult Mesh::preflightInsetFace(FaceId faceId, double factor) const {
     const Face* source = face(faceId);
     if (source == nullptr) {
         return {false, OperationError::notFound, "inset face does not exist", {}, {}};
@@ -236,6 +257,15 @@ OperationResult Mesh::insetFace(FaceId faceId, double factor) {
     if (!std::isfinite(factor) || factor <= 0.0 || factor >= 1.0) {
         return {false, OperationError::invalidArgument, "inset factor must be inside (0, 1)", {}, {}};
     }
+    return {true, OperationError::none, {}, {}, {}};
+}
+
+OperationResult Mesh::insetFace(FaceId faceId, double factor) {
+    OperationResult preflight = preflightInsetFace(faceId, factor);
+    if (!preflight.ok) {
+        return preflight;
+    }
+    const Face* source = face(faceId);
     if (revision_ == std::numeric_limits<std::uint64_t>::max()) {
         return {false, OperationError::revisionExhausted,
                 "inset cannot advance the terminal mesh revision", {}, {}};
@@ -298,7 +328,7 @@ OperationResult Mesh::insetFace(FaceId faceId, double factor) {
     return commitCandidate(*this, std::move(candidate), std::move(success));
 }
 
-OperationResult Mesh::extrudeFace(FaceId faceId, Vec3 offset) {
+OperationResult Mesh::preflightExtrudeFace(FaceId faceId, Vec3 offset) const {
     const Face* source = face(faceId);
     if (source == nullptr) {
         return {false, OperationError::notFound, "extrude face does not exist", {}, {}};
@@ -308,6 +338,15 @@ OperationResult Mesh::extrudeFace(FaceId faceId, Vec3 offset) {
         return {false, OperationError::invalidArgument,
                 "extrude offset must be finite and nonzero", {}, {}};
     }
+    return {true, OperationError::none, {}, {}, {}};
+}
+
+OperationResult Mesh::extrudeFace(FaceId faceId, Vec3 offset) {
+    OperationResult preflight = preflightExtrudeFace(faceId, offset);
+    if (!preflight.ok) {
+        return preflight;
+    }
+    const Face* source = face(faceId);
     if (revision_ == std::numeric_limits<std::uint64_t>::max()) {
         return {false, OperationError::revisionExhausted,
                 "extrude cannot advance the terminal mesh revision", {}, {}};
@@ -361,7 +400,8 @@ OperationResult Mesh::extrudeFace(FaceId faceId, Vec3 offset) {
     return commitCandidate(*this, std::move(candidate), std::move(success));
 }
 
-OperationResult Mesh::mergeVertices(VertexId targetId, VertexId sourceId) {
+OperationResult Mesh::preflightMergeVertices(VertexId targetId,
+                                             VertexId sourceId) const {
     if (targetId == sourceId) {
         return {false, OperationError::invalidArgument,
                 "merge target and source must be different vertices", {}, {}};
@@ -371,6 +411,16 @@ OperationResult Mesh::mergeVertices(VertexId targetId, VertexId sourceId) {
     if (target == nullptr || source == nullptr) {
         return {false, OperationError::notFound, "merge vertex does not exist", {}, {}};
     }
+    return {true, OperationError::none, {}, {}, {}};
+}
+
+OperationResult Mesh::mergeVertices(VertexId targetId, VertexId sourceId) {
+    OperationResult preflight = preflightMergeVertices(targetId, sourceId);
+    if (!preflight.ok) {
+        return preflight;
+    }
+    const Vertex* target = vertex(targetId);
+    const Vertex* source = vertex(sourceId);
     if (revision_ == std::numeric_limits<std::uint64_t>::max()) {
         return {false, OperationError::revisionExhausted,
                 "merge cannot advance the terminal mesh revision", {}, {}};

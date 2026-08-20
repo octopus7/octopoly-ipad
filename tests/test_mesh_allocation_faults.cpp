@@ -1,6 +1,7 @@
 #include "octopoly/mesh.hpp"
 #include "octopoly/glb_codec.hpp"
 #include "octopoly/project_codec.hpp"
+#include "octopoly/scene.hpp"
 
 #include <algorithm>
 #include <array>
@@ -144,8 +145,13 @@ namespace {
 
 using octopoly::Mesh;
 using octopoly::OperationResult;
+using octopoly::Primitive;
+using octopoly::Scene;
+using octopoly::SceneResult;
 using octopoly::project::encodeProject;
+using octopoly::project::encodeSceneProject;
 using octopoly::project::installProject;
+using octopoly::project::installSceneProject;
 
 void require(bool condition, const std::string& message) {
     if (!condition) {
@@ -389,6 +395,151 @@ void glb_decode_allocation_failures_are_typed_and_install_is_atomic() {
     throw std::runtime_error("GLB install did not reach a successful allocation ordinal");
 }
 
+Scene make_scene_fixture() {
+    Scene scene;
+    require(scene.createPrimitive(Primitive::cube, "Cube").ok,
+            "scene fixture cube creation");
+    require(scene.createPrimitive(Primitive::uvSphere, "Sphere", {8, 4}).ok,
+            "scene fixture sphere creation");
+    require(scene.selectObject(1).ok, "scene fixture selection");
+    return scene;
+}
+
+SceneResult sceneCreate(Scene& scene) {
+    return scene.createPrimitive(Primitive::cylinder, "Cylinder", {12, 4});
+}
+
+SceneResult sceneCreateMesh(Scene& scene) {
+    Mesh imported = Mesh::makeDefaultCube();
+    require(imported.extrudeFace(imported.faces().front().id, {0.0, 0.0, -0.25}).ok,
+            "scene imported-mesh allocation fixture edit");
+    return scene.createMeshObject(std::move(imported), "Imported GLB");
+}
+
+SceneResult sceneDelete(Scene& scene) { return scene.deleteObject(1); }
+SceneResult sceneRename(Scene& scene) { return scene.renameObject(1, "Renamed"); }
+SceneResult sceneTransform(Scene& scene) {
+    return scene.setLocalTransform(1, {{2.0, 3.0, 4.0}, {}, {-1.0, 2.0, 3.0}});
+}
+
+using SceneOperation = SceneResult (*)(Scene&);
+
+template <typename Operation>
+void require_scene_allocation_failures_are_atomic(std::string_view label,
+                                                  Operation operation) {
+    constexpr std::size_t maximumOrdinal = 4'096;
+    std::size_t observedFailures = 0;
+    for (std::size_t ordinal = 0; ordinal < maximumOrdinal; ++ordinal) {
+        Scene live = make_scene_fixture();
+        const auto before = encodeSceneProject(live);
+        require(before.ok, std::string(label) + " baseline scene encodes");
+        bool escaped = false;
+        bool succeeded = false;
+        {
+            allocation_fault::Scope fault(ordinal);
+            try {
+                succeeded = operation(live).ok;
+            } catch (const std::bad_alloc&) {
+                escaped = true;
+            }
+        }
+        if (escaped) {
+            ++observedFailures;
+            const auto after = encodeSceneProject(live);
+            require(after.ok && after.bytes == before.bytes,
+                    std::string(label) +
+                        " escaped bad_alloc preserves exact scene bytes");
+            require(live.validate().ok,
+                    std::string(label) + " escaped bad_alloc preserves validation");
+            continue;
+        }
+        require(succeeded, std::string(label) + " eventual ordinal succeeds");
+        require(observedFailures > 0,
+                std::string(label) + " observes injected allocation failures");
+        require(live.validate().ok, std::string(label) + " successful scene validates");
+        return;
+    }
+    throw std::runtime_error(std::string(label) +
+                             " did not reach a successful allocation ordinal");
+}
+
+OperationResult sceneSelectedLoopCut(Scene& scene) {
+    return scene.selectedLoopCut(scene.selectedObject()->mesh().faces().front().id);
+}
+
+void scene_copy_assignment_allocation_failures_are_atomic() {
+    constexpr std::size_t maximumOrdinal = 4'096;
+    const Scene source = make_scene_fixture();
+    std::size_t observedFailures = 0;
+    for (std::size_t ordinal = 0; ordinal < maximumOrdinal; ++ordinal) {
+        Scene destination;
+        require(destination.createPrimitive(Primitive::cone, "Destination", {7, 4}).ok,
+                "scene copy destination fixture");
+        const auto before = encodeSceneProject(destination);
+        require(before.ok, "scene copy destination encodes");
+        bool escaped = false;
+        {
+            allocation_fault::Scope fault(ordinal);
+            try {
+                destination = source;
+            } catch (const std::bad_alloc&) {
+                escaped = true;
+            }
+        }
+        if (escaped) {
+            ++observedFailures;
+            const auto after = encodeSceneProject(destination);
+            require(after.ok && after.bytes == before.bytes,
+                    "scene copy bad_alloc preserves exact destination bytes");
+            continue;
+        }
+        require(observedFailures > 0, "scene copy observes allocation failures");
+        const auto sourceBytes = encodeSceneProject(source);
+        const auto destinationBytes = encodeSceneProject(destination);
+        require(sourceBytes.ok && destinationBytes.ok &&
+                    sourceBytes.bytes == destinationBytes.bytes,
+                "successful scene copy replaces complete destination");
+        return;
+    }
+    throw std::runtime_error("scene copy did not reach a successful ordinal");
+}
+
+void scene_install_allocation_failures_are_typed_and_atomic() {
+    constexpr std::size_t maximumOrdinal = 8'192;
+    const Scene replacement = make_scene_fixture();
+    const auto replacementBytes = encodeSceneProject(replacement);
+    require(replacementBytes.ok, "scene install replacement encodes");
+    std::size_t observedFailures = 0;
+    for (std::size_t ordinal = 0; ordinal < maximumOrdinal; ++ordinal) {
+        Scene live;
+        require(live.createPrimitive(Primitive::plane, "Live").ok,
+                "scene install live fixture");
+        const auto before = encodeSceneProject(live);
+        require(before.ok, "scene install live fixture encodes");
+        octopoly::project::SceneInstallResult result;
+        {
+            allocation_fault::Scope fault(ordinal);
+            result = installSceneProject(live, replacementBytes.bytes);
+        }
+        if (!result.ok) {
+            ++observedFailures;
+            require(result.error.code ==
+                        octopoly::project::SceneDecodeErrorCode::allocationFailed,
+                    "injected scene install failure is typed allocation failure");
+            const auto after = encodeSceneProject(live);
+            require(after.ok && after.bytes == before.bytes,
+                    "typed scene install failure preserves exact live bytes");
+            continue;
+        }
+        require(observedFailures > 0, "scene install observes allocation failures");
+        const auto after = encodeSceneProject(live);
+        require(after.ok && after.bytes == replacementBytes.bytes,
+                "successful scene install commits complete candidate");
+        return;
+    }
+    throw std::runtime_error("scene install did not reach a successful ordinal");
+}
+
 }  // namespace
 
 int main() {
@@ -435,6 +586,49 @@ int main() {
         std::cerr << "FAIL GLB allocation failures are typed and install is atomic: "
                   << error.what() << '\n';
     }
-    std::cout << operations.size() + 3 << " test(s), " << failures << " failure(s)\n";
+    const std::array<std::pair<std::string_view, SceneOperation>, 5> sceneOperations{{
+        {"scene create", sceneCreate},
+        {"scene create imported mesh", sceneCreateMesh},
+        {"scene delete", sceneDelete},
+        {"scene rename", sceneRename},
+        {"scene transform", sceneTransform},
+    }};
+    for (const auto& [label, operation] : sceneOperations) {
+        try {
+            require_scene_allocation_failures_are_atomic(label, operation);
+            std::cout << "PASS " << label << " allocation failures are atomic\n";
+        } catch (const std::exception& error) {
+            ++failures;
+            std::cerr << "FAIL " << label << " allocation failures are atomic: "
+                      << error.what() << '\n';
+        }
+    }
+    try {
+        require_scene_allocation_failures_are_atomic("scene selected loop cut",
+                                                     sceneSelectedLoopCut);
+        std::cout << "PASS scene selected loop cut allocation failures are atomic\n";
+    } catch (const std::exception& error) {
+        ++failures;
+        std::cerr << "FAIL scene selected loop cut allocation failures are atomic: "
+                  << error.what() << '\n';
+    }
+    try {
+        scene_copy_assignment_allocation_failures_are_atomic();
+        std::cout << "PASS scene copy assignment allocation failures are atomic\n";
+    } catch (const std::exception& error) {
+        ++failures;
+        std::cerr << "FAIL scene copy assignment allocation failures are atomic: "
+                  << error.what() << '\n';
+    }
+    try {
+        scene_install_allocation_failures_are_typed_and_atomic();
+        std::cout << "PASS scene allocation failures are typed and install is atomic\n";
+    } catch (const std::exception& error) {
+        ++failures;
+        std::cerr << "FAIL scene allocation failures are typed and install is atomic: "
+                  << error.what() << '\n';
+    }
+    std::cout << operations.size() + sceneOperations.size() + 6 << " test(s), "
+              << failures << " failure(s)\n";
     return failures == 0 ? 0 : 1;
 }

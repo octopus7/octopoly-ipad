@@ -16,6 +16,7 @@ struct MeshProjectAccess;
 namespace glb {
 struct MeshGlbAccess;
 }
+struct SceneMeshAccess;
 
 using VertexId = std::uint64_t;
 using FaceId = std::uint64_t;
@@ -117,8 +118,17 @@ public:
 private:
     friend struct project::MeshProjectAccess;
     friend struct glb::MeshGlbAccess;
+    friend struct SceneMeshAccess;
 
     void rebuildVertexLookup();
+    [[nodiscard]] OperationResult preflightLoopCut(FaceId faceId) const;
+    [[nodiscard]] OperationResult preflightKnifeCut(
+        FaceId faceId, std::size_t firstEdge, double firstT,
+        std::size_t secondEdge, double secondT) const;
+    [[nodiscard]] OperationResult preflightInsetFace(FaceId faceId, double factor) const;
+    [[nodiscard]] OperationResult preflightExtrudeFace(FaceId faceId, Vec3 offset) const;
+    [[nodiscard]] OperationResult preflightMergeVertices(
+        VertexId targetId, VertexId sourceId) const;
 
     std::vector<Vertex> vertices_;
     std::vector<std::pair<VertexId, std::size_t>> vertexLookup_;

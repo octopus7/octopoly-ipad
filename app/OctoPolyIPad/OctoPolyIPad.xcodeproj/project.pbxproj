@@ -17,6 +17,7 @@
 		000000000000000000000208 /* mesh.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000010A /* mesh.cpp */; };
 		00000000000000000000020B /* project_codec.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000010E /* project_codec.cpp */; };
 		00000000000000000000020C /* glb_codec.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000110 /* glb_codec.cpp */; };
+		00000000000000000000020D /* scene.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000112 /* scene.cpp */; };
 		000000000000000000000209 /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 00000000000000000000010C /* Metal.framework */; };
 		00000000000000000000020A /* MetalKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 00000000000000000000010D /* MetalKit.framework */; };
 /* End PBXBuildFile section */
@@ -38,6 +39,8 @@
 		00000000000000000000010F /* project_codec.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = include/octopoly/project_codec.hpp; sourceTree = "<group>"; };
 		000000000000000000000110 /* glb_codec.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = src/glb_codec.cpp; sourceTree = "<group>"; };
 		000000000000000000000111 /* glb_codec.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = include/octopoly/glb_codec.hpp; sourceTree = "<group>"; };
+		000000000000000000000112 /* scene.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = src/scene.cpp; sourceTree = "<group>"; };
+		000000000000000000000113 /* scene.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = include/octopoly/scene.hpp; sourceTree = "<group>"; };
 		00000000000000000000010C /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
 		00000000000000000000010D /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
@@ -98,6 +101,8 @@
 				00000000000000000000010F /* project_codec.hpp */,
 				000000000000000000000110 /* glb_codec.cpp */,
 				000000000000000000000111 /* glb_codec.hpp */,
+				000000000000000000000112 /* scene.cpp */,
+				000000000000000000000113 /* scene.hpp */,
 			);
 			name = "Portable Core";
 			path = ../../core;
@@ -190,6 +195,7 @@
 				000000000000000000000208 /* mesh.cpp in Sources */,
 				00000000000000000000020B /* project_codec.cpp in Sources */,
 				00000000000000000000020C /* glb_codec.cpp in Sources */,
+				00000000000000000000020D /* scene.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

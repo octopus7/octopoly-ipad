@@ -1,6 +1,6 @@
 # OctoPoly iPad Roadmap
 
-각 차수는 독립적인 구현·정적 검사·커밋·푸시 경계다. 현재 저장소 상태에서는 Phase 1부터 Phase 3까지 구현되었으며, 이후 차수는 계획 상태다.
+각 차수는 독립적인 구현·정적 검사 경계다. 현재 저장소 상태에서는 Phase 1부터 Phase 4까지 완료되었고 Phase 5 이후는 계획 상태다. 이 WSL 검증에서 Phase 4의 Apple 소스는 정적 경계까지 완료했으며 Xcode·simulator·device 실행을 주장하지 않는다.
 
 ## Phase 1 — Portable mesh core and iPad shell (complete)
 
@@ -14,9 +14,9 @@ C++20 메시 코어, 안정 ID, 유효성 검사와 revision, 결정적 삼각�
 
 지원 범위를 명시한 glTF 2.0 Binary(GLB) 임포트·익스포트를 구현한다. 알 수 없거나 미지원인 필드는 조용히 손실시키지 않고 명시적으로 오류 또는 진단을 반환한다.
 
-## Phase 4 — Primitives, scene outliner, and world transforms (planned)
+## Phase 4 — Primitives, scene outliner, and world transforms (complete)
 
-기본 도형 추가, 안정적인 오브젝트 ID와 씬 소유권, iPad 씬 아웃라이너, 오브젝트별 고유 로컬·월드 트랜스폼을 구현한다.
+portable core의 여섯 기본 도형, 안정적인 오브젝트 ID와 씬 소유권, 오브젝트별 고유 로컬·월드 트랜스폼, 선택 오브젝트 메시 편집, `OCTOSCNE` scene project codec을 구현했다. iPad 정적 통합에는 Scene-backed Objective-C++ bridge, 전체 오브젝트 world-space 렌더 스트리밍, stable-ID outliner 선택·이름변경·삭제, 실제 primitive/TRS/edit controls, legacy `OCTOPOLY` fallback, selected-only GLB export와 new-object GLB import가 포함된다.
 
 ## Phase 5 — Mirror modifier, center merge, and clipping (planned)
 

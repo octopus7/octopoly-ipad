@@ -1,6 +1,7 @@
 #pragma once
 
 #include "octopoly/mesh.hpp"
+#include "octopoly/scene.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -11,11 +12,12 @@
 namespace octopoly::project {
 
 enum class EncodeErrorCode {
-    none,
-    invalidMesh,
-    integerOverflow,
-    allocationFailed,
-    internalError,
+    none = 0,
+    invalidMesh = 1,
+    integerOverflow = 2,
+    allocationFailed = 3,
+    internalError = 4,
+    invalidScene = 5,
 };
 
 struct EncodeError {
@@ -102,5 +104,72 @@ struct InstallResult {
 [[nodiscard]] InstallResult installProject(Mesh& liveMesh,
                                            std::span<const std::uint8_t> bytes,
                                            LoadLimits limits = {}) noexcept;
+
+// Canonical scene container v1.0. The legacy Mesh v1.0 API and bytes above are
+// independent and unchanged.
+enum class SceneDecodeErrorCode {
+    none,
+    inputTooLarge,
+    badMagic,
+    unsupportedVersion,
+    unsupportedEndian,
+    nonzeroReserved,
+    truncated,
+    trailingBytes,
+    checksumMismatch,
+    integerOverflow,
+    malformedLength,
+    malformedCount,
+    objectLimitExceeded,
+    nameLimitExceeded,
+    aggregateVertexLimitExceeded,
+    aggregateFaceLimitExceeded,
+    aggregateCornerLimitExceeded,
+    zeroObjectId,
+    duplicateObjectId,
+    invalidObjectName,
+    invalidTransform,
+    nestedMeshInvalid,
+    aggregateCountMismatch,
+    selectedObjectInvalid,
+    nextObjectIdInvalid,
+    sceneValidationFailed,
+    allocationFailed,
+    internalError,
+};
+
+struct SceneDecodeError {
+    DecodeErrorCategory category{DecodeErrorCategory::none};
+    SceneDecodeErrorCode code{SceneDecodeErrorCode::none};
+    std::size_t offset{};
+    std::string_view message{};
+};
+
+struct SceneLoadLimits {
+    std::size_t maxBytes{128U * 1024U * 1024U};
+    std::uint64_t maxObjects{10'000};
+    std::uint64_t maxNameBytes{kMaxObjectNameBytes};
+    std::uint64_t maxAggregateVertices{1'000'000};
+    std::uint64_t maxAggregateFaces{1'000'000};
+    std::uint64_t maxAggregateFaceCorners{4'000'000};
+};
+
+struct SceneDecodeResult {
+    bool ok{};
+    Scene scene;
+    SceneDecodeError error;
+};
+
+struct SceneInstallResult {
+    bool ok{};
+    SceneDecodeError error;
+};
+
+[[nodiscard]] EncodeResult encodeSceneProject(const Scene& scene) noexcept;
+[[nodiscard]] SceneDecodeResult decodeSceneProject(
+    std::span<const std::uint8_t> bytes, SceneLoadLimits limits = {}) noexcept;
+[[nodiscard]] SceneInstallResult installSceneProject(
+    Scene& liveScene, std::span<const std::uint8_t> bytes,
+    SceneLoadLimits limits = {}) noexcept;
 
 }  // namespace octopoly::project

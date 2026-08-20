@@ -15,6 +15,13 @@
 
 namespace {
 
+static_assert(static_cast<int>(octopoly::project::EncodeErrorCode::none) == 0);
+static_assert(static_cast<int>(octopoly::project::EncodeErrorCode::invalidMesh) == 1);
+static_assert(static_cast<int>(octopoly::project::EncodeErrorCode::integerOverflow) == 2);
+static_assert(static_cast<int>(octopoly::project::EncodeErrorCode::allocationFailed) == 3);
+static_assert(static_cast<int>(octopoly::project::EncodeErrorCode::internalError) == 4);
+static_assert(static_cast<int>(octopoly::project::EncodeErrorCode::invalidScene) == 5);
+
 using octopoly::FaceId;
 using octopoly::Mesh;
 using octopoly::VertexId;

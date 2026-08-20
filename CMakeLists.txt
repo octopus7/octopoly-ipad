@@ -7,6 +7,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_library(octopoly_core STATIC
     core/src/mesh.cpp
+    core/src/scene.cpp
     core/src/project_codec.cpp
     core/src/glb_codec.cpp
 )
@@ -32,18 +33,25 @@ add_executable(glb_codec_tests
 )
 target_link_libraries(glb_codec_tests PRIVATE octopoly_core)
 
+add_executable(scene_tests
+    tests/test_scene.cpp
+)
+target_link_libraries(scene_tests PRIVATE octopoly_core)
+
 if(MSVC)
     target_compile_options(octopoly_core PRIVATE /W4 /WX /permissive-)
     target_compile_options(octopoly_core_tests PRIVATE /W4 /WX /permissive-)
     target_compile_options(project_codec_tests PRIVATE /W4 /WX /permissive-)
     target_compile_options(mesh_allocation_fault_tests PRIVATE /W4 /WX /permissive-)
     target_compile_options(glb_codec_tests PRIVATE /W4 /WX /permissive-)
+    target_compile_options(scene_tests PRIVATE /W4 /WX /permissive-)
 else()
     target_compile_options(octopoly_core PRIVATE -Wall -Wextra -Wpedantic -Werror)
     target_compile_options(octopoly_core_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
     target_compile_options(project_codec_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
     target_compile_options(mesh_allocation_fault_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
     target_compile_options(glb_codec_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+    target_compile_options(scene_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 
 enable_testing()
@@ -51,3 +59,4 @@ add_test(NAME octopoly_core_tests COMMAND octopoly_core_tests)
 add_test(NAME project_codec_tests COMMAND project_codec_tests)
 add_test(NAME mesh_allocation_fault_tests COMMAND mesh_allocation_fault_tests)
 add_test(NAME glb_codec_tests COMMAND glb_codec_tests)
+add_test(NAME scene_tests COMMAND scene_tests)

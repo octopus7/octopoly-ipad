@@ -25,16 +25,20 @@ echo "[check] direct C++20 warning-clean build"
   -o build/check/octopoly_core_tests
 "$CXX" -std=c++20 -Wall -Wextra -Wpedantic -Werror \
   -Icore/include \
-  core/src/mesh.cpp core/src/project_codec.cpp tests/test_project_codec.cpp \
+  core/src/mesh.cpp core/src/scene.cpp core/src/project_codec.cpp tests/test_project_codec.cpp \
   -o build/check/project_codec_tests
 "$CXX" -std=c++20 -Wall -Wextra -Wpedantic -Werror \
   -Icore/include \
-  core/src/mesh.cpp core/src/project_codec.cpp core/src/glb_codec.cpp tests/test_mesh_allocation_faults.cpp \
+  core/src/mesh.cpp core/src/scene.cpp core/src/project_codec.cpp core/src/glb_codec.cpp tests/test_mesh_allocation_faults.cpp \
   -o build/check/mesh_allocation_fault_tests
 "$CXX" -std=c++20 -Wall -Wextra -Wpedantic -Werror \
   -Icore/include \
-  core/src/mesh.cpp core/src/project_codec.cpp core/src/glb_codec.cpp tests/test_glb_codec.cpp \
+  core/src/mesh.cpp core/src/scene.cpp core/src/project_codec.cpp core/src/glb_codec.cpp tests/test_glb_codec.cpp \
   -o build/check/glb_codec_tests
+"$CXX" -std=c++20 -Wall -Wextra -Wpedantic -Werror \
+  -Icore/include \
+  core/src/mesh.cpp core/src/scene.cpp core/src/project_codec.cpp tests/test_scene.cpp \
+  -o build/check/scene_tests
 
 echo "[check] mesh tests"
 ./build/check/octopoly_core_tests
@@ -47,6 +51,9 @@ echo "[check] mesh allocation-fault tests"
 
 echo "[check] GLB codec tests"
 ./build/check/glb_codec_tests
+
+echo "[check] scene/object/primitive tests"
+./build/check/scene_tests
 
 echo "[check] shell syntax"
 bash -n scripts/check.sh scripts/mac/remote-build.sh scripts/mac/install-device.sh
